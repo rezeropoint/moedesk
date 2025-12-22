@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnimeMart 运营工作台 - 内容审核</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-dark: #0f0f1a;
+      --bg-sidebar: #16162a;
+      --bg-card: #1e1e32;
+      --bg-main: #f8f9fc;
+      --accent-purple: #7c3aed;
+      --accent-purple-light: #a78bfa;
+      --accent-pink: #ec4899;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-light: #f9fafb;
+      --border: #e5e7eb;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', 'Space Grotesk', sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* 左侧导航 */
+    .sidebar {
+      width: 240px;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .logo h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 16px 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .nav-item.active {
+      background: var(--accent-purple);
+      color: white;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--accent-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .nav-item.active .badge {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .user-profile {
+      padding: 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .user-info .name { color: var(--text-light); font-size: 14px; font-weight: 600; }
+    .user-info .role { color: rgba(255,255,255,0.4); font-size: 12px; }
+
+    /* 主内容 */
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      height: 72px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-left h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header-left .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 12px;
+      background: #f3f4f6;
+      border-radius: 20px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent-purple);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .btn-success {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    /* 统计卡片 */
+    .stats-bar {
+      padding: 20px 32px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 24px;
+    }
+
+    .stat-card {
+      flex: 1;
+      padding: 16px 20px;
+      background: #f9fafb;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .stat-icon.pending { background: #fef3c7; }
+    .stat-icon.approved { background: #d1fae5; }
+    .stat-icon.scheduled { background: #e0e7ff; }
+    .stat-icon.published { background: #dbeafe; }
+
+    .stat-info .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .stat-info .value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    /* 内容区 */
+    .content {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    /* 审核卡片 */
+    .review-card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .review-card:hover {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .source-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .source-thumb {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .source-detail h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .source-detail p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .card-meta {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hot-badge {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      color: #92400e;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .time-badge {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .platform-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .platform-tab {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+    }
+
+    .platform-tab.active {
+      background: var(--accent-purple);
+      border-color: var(--accent-purple);
+      color: white;
+    }
+
+    .platform-tab.ig { border-color: #e1306c; }
+    .platform-tab.ig.active { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743); border-color: transparent; }
+    .platform-tab.tt.active { background: #000; border-color: #000; }
+    .platform-tab.tw.active { background: #1da1f2; border-color: #1da1f2; }
+    .platform-tab.xhs.active { background: #ff2442; border-color: #ff2442; }
+
+    .content-preview {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .content-text {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .content-hashtags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .hashtag {
+      font-size: 12px;
+      color: var(--accent-purple);
+      background: #f3e8ff;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      padding-top: 16px;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .action-btn.approve {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .action-btn.approve:hover {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .action-btn.edit {
+      background: #f3f4f6;
+      color: var(--text-secondary);
+    }
+
+    .action-btn.edit:hover {
+      background: #e5e7eb;
+      color: var(--text-primary);
+    }
+
+    .action-btn.reject {
+      background: white;
+      color: var(--accent-red);
+      border: 1px solid #fecaca;
+    }
+
+    .action-btn.reject:hover {
+      background: #fef2f2;
+    }
+
+    /* AI生成标识 */
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--accent-purple);
+      background: #f3e8ff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    /* 编辑模态框提示 */
+    .edit-hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .review-card {
+      animation: fadeIn 0.3s ease;
+    }
+
+    .review-card:nth-child(2) { animation-delay: 0.1s; }
+    .review-card:nth-child(3) { animation-delay: 0.2s; }
+    .review-card:nth-child(4) { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+  <!-- 左侧导航 -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1><span>🎌</span> AnimeMart</h1>
+      <p>运营工作台 v1.0</p>
+    </div>
+    
+    <nav class="nav">
+      <div class="nav-item">
+        <span class="icon">💬</span>
+        <span>消息中心</span>
+        <span class="badge">23</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📅</span>
+        <span>内容日历</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">🔥</span>
+        <span>热点雷达</span>
+      </div>
+      <div class="nav-item active">
+        <span class="icon">✍️</span>
+        <span>内容审核</span>
+        <span class="badge">5</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📊</span>
+        <span>数据报表</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">⚙️</span>
+        <span>工作流配置</span>
+      </div>
+    </nav>
+
+    <div class="user-profile">
+      <div class="user-avatar">V</div>
+      <div class="user-info">
+        <div class="name">Vincent</div>
+        <div class="role">运营主管</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <h2>内容审核</h2>
+        <span class="subtitle">AI生成内容人工审核</span>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-success">✓ 批量通过选中</button>
+        <button class="btn btn-primary">🤖 重新生成</button>
+      </div>
+    </header>
+
+    <!-- 统计卡片 -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-icon pending">⏳</div>
+        <div class="stat-info">
+          <div class="label">待审核</div>
+          <div class="value">5</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon approved">✅</div>
+        <div class="stat-info">
+          <div class="label">今日已通过</div>
+          <div class="value">12</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon scheduled">📅</div>
+        <div class="stat-info">
+          <div class="label">已排期</div>
+          <div class="value">8</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon published">🚀</div>
+        <div class="stat-info">
+          <div class="label">今日已发布</div>
+          <div class="value">6</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="content">
+      <div class="content-grid">
+        <!-- 审核卡片1 -->
+        <div class="review-card">
+          <div class="card-header">
+            <div class="source-info">
+              <div class="source-thumb">🎌</div>
+              <div class="source-detail">
+                <h4>咒术回战 五条悟 战斗版手办</h4>
+                <p>SKU: JJK-GOJO-001 · ¥899</p>
+              </div>
+            </div>
+            <div class="card-meta">
+              <span class="hot-badge">🔥 热点关联</span>
+              <span class="time-badge">10分钟前生成</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="ai-badge">🤖 AI生成 · Claude 3.5</div>
+            <div class="platform-tabs">
+              <div class="platform-tab ig active">Instagram</div>
+              <div class="platform-tab tt">TikTok</div>
+              <div class="platform-tab tw">Twitter</div>
+              <div class="platform-tab xhs">小红书</div>
+            </div>
+            <div class="content-preview">
+              <div class="content-text">
+                六眼最强术师终于来了！🔥 这款五条悟战斗版手办采用1/7比例，完美还原动画中的经典战斗姿态。细节拉满的领域展开特效底座，收藏党狠狠冲！
+                <br><br>
+                ⚡ 现货秒发 | 🎁 用码 GOJO10 享9折
+              </div>
+              <div class="content-hashtags">
+                <span class="hashtag">#咒术回战</span>
+                <span class="hashtag">#五条悟</span>
+                <span class="hashtag">#JujutsuKaisen</span>
+                <span class="hashtag">#AnimeFigure</span>
+                <span class="hashtag">#手办</span>
+                <span class="hashtag">+12</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="action-btn approve">✓ 通过</button>
+              <button class="action-btn edit">✏️ 编辑</button>
+              <button class="action-btn reject">✕ 拒绝</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 审核卡片2 -->
+        <div class="review-card">
+          <div class="card-header">
+            <div class="source-info">
+              <div class="source-thumb">🎭</div>
+              <div class="source-detail">
+                <h4>间谍过家家 阿尼亚 花生款</h4>
+                <p>SKU: SPY-ANYA-002 · ¥459</p>
+              </div>
+            </div>
+            <div class="card-meta">
+              <span class="time-badge">25分钟前生成</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="ai-badge">🤖 AI生成 · Claude 3.5</div>
+            <div class="platform-tabs">
+              <div class="platform-tab ig">Instagram</div>
+              <div class="platform-tab tt active">TikTok</div>
+              <div class="platform-tab tw">Twitter</div>
+              <div class="platform-tab xhs">小红书</div>
+            </div>
+            <div class="content-preview">
+              <div class="content-text">
+                waku waku～ 🥜✨ 
+                <br><br>
+                阿尼亚花生款手办也太可爱了吧！捧着花生的小表情绝了，放在桌上治愈一整天 💕
+                <br><br>
+                评论区告诉我你最喜欢阿尼亚的哪个表情包？👇
+              </div>
+              <div class="content-hashtags">
+                <span class="hashtag">#spyfamily</span>
+                <span class="hashtag">#anya</span>
+                <span class="hashtag">#间谍过家家</span>
+                <span class="hashtag">#阿尼亚</span>
+                <span class="hashtag">+8</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="action-btn approve">✓ 通过</button>
+              <button class="action-btn edit">✏️ 编辑</button>
+              <button class="action-btn reject">✕ 拒绝</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 审核卡片3 -->
+        <div class="review-card">
+          <div class="card-header">
+            <div class="source-info">
+              <div class="source-thumb">⚔️</div>
+              <div class="source-detail">
+                <h4>鬼灭之刃 �的妹豆子 睡眠款</h4>
+                <p>SKU: DS-NEZUKO-003 · ¥699</p>
+              </div>
+            </div>
+            <div class="card-meta">
+              <span class="time-badge">1小时前生成</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="ai-badge">🤖 AI生成 · Claude 3.5</div>
+            <div class="platform-tabs">
+              <div class="platform-tab ig">Instagram</div>
+              <div class="platform-tab tt">TikTok</div>
+              <div class="platform-tab tw">Twitter</div>
+              <div class="platform-tab xhs active">小红书</div>
+            </div>
+            <div class="content-preview">
+              <div class="content-text">
+                姐妹们！这款祢豆子睡眠款手办也太治愈了吧 😭💕
+                <br><br>
+                迷你尺寸刚好放在床头，每天看着她入睡感觉自己也被保护了（bushi
+                <br><br>
+                做工真的绝，头发的渐变色和小竹筒的细节都很到位！喜欢鬼灭的姐妹冲就完事了～
+              </div>
+              <div class="content-hashtags">
+                <span class="hashtag">#鬼灭之刃</span>
+                <span class="hashtag">#祢豆子</span>
+                <span class="hashtag">#手办开箱</span>
+                <span class="hashtag">#二次元</span>
+                <span class="hashtag">+6</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="action-btn approve">✓ 通过</button>
+              <button class="action-btn edit">✏️ 编辑</button>
+              <button class="action-btn reject">✕ 拒绝</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 审核卡片4 -->
+        <div class="review-card">
+          <div class="card-header">
+            <div class="source-info">
+              <div class="source-thumb">🏴‍☠️</div>
+              <div class="source-detail">
+                <h4>海贼王 路飞 五档尼卡</h4>
+                <p>SKU: OP-LUFFY-005 · ¥1299</p>
+              </div>
+            </div>
+            <div class="card-meta">
+              <span class="hot-badge">🔥 热点关联</span>
+              <span class="time-badge">2小时前生成</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="ai-badge">🤖 AI生成 · Claude 3.5</div>
+            <div class="platform-tabs">
+              <div class="platform-tab ig">Instagram</div>
+              <div class="platform-tab tt">TikTok</div>
+              <div class="platform-tab tw active">Twitter</div>
+              <div class="platform-tab xhs">小红书</div>
+            </div>
+            <div class="content-preview">
+              <div class="content-text">
+                GEAR 5 NIKA IS HERE! 🔥⚡
+                <br><br>
+                The most anticipated figure of 2024 - Luffy's awakened form in all its glory. 
+                <br><br>
+                Pre-order now, limited stock! 🏴‍☠️
+                <br><br>
+                Who else got chills during that transformation? 
+              </div>
+              <div class="content-hashtags">
+                <span class="hashtag">#OnePiece</span>
+                <span class="hashtag">#Luffy</span>
+                <span class="hashtag">#Gear5</span>
+                <span class="hashtag">#Nika</span>
+                <span class="hashtag">+10</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="action-btn approve">✓ 通过</button>
+              <button class="action-btn edit">✏️ 编辑</button>
+              <button class="action-btn reject">✕ 拒绝</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

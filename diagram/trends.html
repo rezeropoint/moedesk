@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnimeMart 运营工作台 - 热点雷达</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-dark: #0f0f1a;
+      --bg-main: #f8f9fc;
+      --accent-purple: #7c3aed;
+      --accent-pink: #ec4899;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-blue: #3b82f6;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-light: #f9fafb;
+      --border: #e5e7eb;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', 'Space Grotesk', sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 240px;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .logo h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 16px 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .nav-item.active {
+      background: var(--accent-purple);
+      color: white;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--accent-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .user-profile {
+      padding: 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .user-info .name { color: var(--text-light); font-size: 14px; font-weight: 600; }
+    .user-info .role { color: rgba(255,255,255,0.4); font-size: 12px; }
+
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .header {
+      height: 72px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-left h2 {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .header-left .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 12px;
+      background: #f3f4f6;
+      border-radius: 20px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent-purple);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: var(--text-secondary);
+    }
+
+    .content {
+      flex: 1;
+      padding: 24px 32px;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+    }
+
+    .trends-section {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .source-tabs {
+      display: flex;
+      gap: 8px;
+    }
+
+    .source-tab {
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .source-tab.active {
+      background: var(--accent-purple);
+      border-color: var(--accent-purple);
+      color: white;
+    }
+
+    .source-tab:hover:not(.active) {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+    }
+
+    .trends-list {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .trend-item {
+      padding: 18px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .trend-item:hover {
+      background: #f9fafb;
+    }
+
+    .trend-item:last-child {
+      border-bottom: none;
+    }
+
+    .trend-rank {
+      width: 32px;
+      height: 32px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      flex-shrink: 0;
+    }
+
+    .trend-rank.hot {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      color: #92400e;
+    }
+
+    .trend-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .trend-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trend-title .fire { color: var(--accent-orange); }
+
+    .trend-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .trend-source {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .trend-stats {
+      display: flex;
+      gap: 10px;
+    }
+
+    .trend-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .trend-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .trend-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+    }
+
+    .trend-btn.primary {
+      background: var(--accent-purple);
+      border-color: var(--accent-purple);
+      color: white;
+    }
+
+    .trend-btn.primary:hover {
+      background: #6d28d9;
+    }
+
+    /* 右侧面板 */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-body {
+      padding: 16px 20px;
+    }
+
+    /* 新番日历 */
+    .anime-schedule {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .anime-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .anime-item:hover {
+      background: #f3f4f6;
+    }
+
+    .anime-thumb {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .anime-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .anime-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .anime-meta {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    .anime-ep {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-purple);
+      background: #f3e8ff;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    /* 产品匹配 */
+    .product-matches {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .product-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 10px;
+    }
+
+    .product-thumb {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .product-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .product-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .product-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent-purple);
+      margin-top: 2px;
+    }
+
+    .product-stock {
+      font-size: 11px;
+      color: var(--accent-green);
+      margin-top: 2px;
+    }
+
+    .match-score {
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .match-score span {
+      display: block;
+      font-size: 16px;
+    }
+
+    /* 监测设置 */
+    .monitor-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .setting-item:last-child {
+      border-bottom: none;
+    }
+
+    .setting-label {
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .setting-value {
+      font-size: 12px;
+      color: var(--accent-purple);
+      background: #f3e8ff;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--accent-green);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .toggle::after {
+      content: '';
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      transition: all 0.2s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .trend-item {
+      animation: fadeIn 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">
+      <h1><span>🎌</span> AnimeMart</h1>
+      <p>运营工作台 v1.0</p>
+    </div>
+    
+    <nav class="nav">
+      <div class="nav-item">
+        <span class="icon">💬</span>
+        <span>消息中心</span>
+        <span class="badge">23</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📅</span>
+        <span>内容日历</span>
+      </div>
+      <div class="nav-item active">
+        <span class="icon">🔥</span>
+        <span>热点雷达</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">✍️</span>
+        <span>内容审核</span>
+        <span class="badge">5</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📊</span>
+        <span>数据报表</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">⚙️</span>
+        <span>工作流配置</span>
+      </div>
+    </nav>
+
+    <div class="user-profile">
+      <div class="user-avatar">V</div>
+      <div class="user-info">
+        <div class="name">Vincent</div>
+        <div class="role">运营主管</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="header">
+      <div class="header-left">
+        <h2>热点雷达</h2>
+        <span class="subtitle">实时追踪二次元热点</span>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-secondary">⏱️ 最后更新: 5分钟前</button>
+        <button class="btn btn-primary">🔄 立即刷新</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="trends-section">
+        <div class="section-header">
+          <div class="section-title">
+            📈 实时热点
+          </div>
+          <div class="source-tabs">
+            <div class="source-tab active">全部</div>
+            <div class="source-tab">Reddit</div>
+            <div class="source-tab">Twitter</div>
+            <div class="source-tab">TikTok</div>
+            <div class="source-tab">AniList</div>
+          </div>
+        </div>
+
+        <div class="trends-list">
+          <div class="trend-item">
+            <div class="trend-rank hot">1</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                咒术回战 剧场版 新预告公开
+                <span class="fire">🔥🔥🔥</span>
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 Twitter / Reddit</div>
+                <div class="trend-stats">
+                  <span>💬 12.3k</span>
+                  <span>📈 +340%</span>
+                  <span>⏰ 2小时前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+
+          <div class="trend-item">
+            <div class="trend-rank hot">2</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                海贼王 1120话 剧情讨论
+                <span class="fire">🔥🔥</span>
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 Reddit / AniList</div>
+                <div class="trend-stats">
+                  <span>💬 8.7k</span>
+                  <span>📈 +180%</span>
+                  <span>⏰ 4小时前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+
+          <div class="trend-item">
+            <div class="trend-rank hot">3</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                间谍过家家 第三季 制作决定
+                <span class="fire">🔥🔥</span>
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 Twitter / TikTok</div>
+                <div class="trend-stats">
+                  <span>💬 6.2k</span>
+                  <span>📈 +220%</span>
+                  <span>⏰ 6小时前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+
+          <div class="trend-item">
+            <div class="trend-rank">4</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                葬送的芙莉莲 手办开箱热潮
+                <span class="fire">🔥</span>
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 TikTok / Instagram</div>
+                <div class="trend-stats">
+                  <span>💬 4.5k</span>
+                  <span>📈 +95%</span>
+                  <span>⏰ 8小时前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+
+          <div class="trend-item">
+            <div class="trend-rank">5</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                蓝色监狱 世界杯篇 播出中
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 AniList / Twitter</div>
+                <div class="trend-stats">
+                  <span>💬 3.8k</span>
+                  <span>📈 +67%</span>
+                  <span>⏰ 12小时前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+
+          <div class="trend-item">
+            <div class="trend-rank">6</div>
+            <div class="trend-content">
+              <div class="trend-title">
+                鬼灭之刃 柱训练篇 完结
+              </div>
+              <div class="trend-meta">
+                <div class="trend-source">📍 Reddit / Twitter</div>
+                <div class="trend-stats">
+                  <span>💬 3.2k</span>
+                  <span>📈 +45%</span>
+                  <span>⏰ 1天前</span>
+                </div>
+              </div>
+            </div>
+            <div class="trend-actions">
+              <button class="trend-btn">查看详情</button>
+              <button class="trend-btn primary">生成内容</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-panel">
+        <!-- 新番日历 -->
+        <div class="panel-card">
+          <div class="panel-header">📅 本周新番</div>
+          <div class="panel-body">
+            <div class="anime-schedule">
+              <div class="anime-item">
+                <div class="anime-thumb">⚔️</div>
+                <div class="anime-info">
+                  <div class="anime-title">咒术回战 涉谷事变</div>
+                  <div class="anime-meta">每周五 00:00</div>
+                </div>
+                <div class="anime-ep">EP 42</div>
+              </div>
+              <div class="anime-item">
+                <div class="anime-thumb">🏴‍☠️</div>
+                <div class="anime-info">
+                  <div class="anime-title">海贼王</div>
+                  <div class="anime-meta">每周日 09:30</div>
+                </div>
+                <div class="anime-ep">EP 1120</div>
+              </div>
+              <div class="anime-item">
+                <div class="anime-thumb">⚽</div>
+                <div class="anime-info">
+                  <div class="anime-title">蓝色监狱</div>
+                  <div class="anime-meta">每周六 23:00</div>
+                </div>
+                <div class="anime-ep">EP 36</div>
+              </div>
+              <div class="anime-item">
+                <div class="anime-thumb">🧙</div>
+                <div class="anime-info">
+                  <div class="anime-title">葬送的芙莉莲</div>
+                  <div class="anime-meta">每周五 23:00</div>
+                </div>
+                <div class="anime-ep">EP 28</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 产品匹配 -->
+        <div class="panel-card">
+          <div class="panel-header">🎯 热点产品匹配</div>
+          <div class="panel-body">
+            <div class="product-matches">
+              <div class="product-item">
+                <div class="product-thumb">🎌</div>
+                <div class="product-info">
+                  <div class="product-name">五条悟 战斗版 1/7</div>
+                  <div class="product-price">¥899</div>
+                  <div class="product-stock">库存 23件</div>
+                </div>
+                <div class="match-score">
+                  <span>94%</span>
+                  匹配
+                </div>
+              </div>
+              <div class="product-item">
+                <div class="product-thumb">🏴‍☠️</div>
+                <div class="product-info">
+                  <div class="product-name">路飞 五档尼卡</div>
+                  <div class="product-price">¥1299</div>
+                  <div class="product-stock">库存 12件</div>
+                </div>
+                <div class="match-score">
+                  <span>89%</span>
+                  匹配
+                </div>
+              </div>
+              <div class="product-item">
+                <div class="product-thumb">🎭</div>
+                <div class="product-info">
+                  <div class="product-name">阿尼亚 花生款</div>
+                  <div class="product-price">¥459</div>
+                  <div class="product-stock">库存 45件</div>
+                </div>
+                <div class="match-score">
+                  <span>85%</span>
+                  匹配
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 监测设置 -->
+        <div class="panel-card">
+          <div class="panel-header">⚙️ 监测设置</div>
+          <div class="panel-body">
+            <div class="monitor-settings">
+              <div class="setting-item">
+                <span class="setting-label">刷新频率</span>
+                <span class="setting-value">每小时</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">自动生成内容</span>
+                <div class="toggle"></div>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">热度阈值</span>
+                <span class="setting-value">+50%</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">Slack 通知</span>
+                <div class="toggle"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

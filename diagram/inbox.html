@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnimeMart 运营工作台 - 统一收件箱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg-dark: #0f0f1a;
+      --bg-sidebar: #16162a;
+      --bg-card: #1e1e32;
+      --bg-main: #f8f9fc;
+      --accent-purple: #7c3aed;
+      --accent-purple-light: #a78bfa;
+      --accent-pink: #ec4899;
+      --accent-green: #10b981;
+      --accent-orange: #f59e0b;
+      --accent-red: #ef4444;
+      --text-primary: #1f2937;
+      --text-secondary: #6b7280;
+      --text-light: #f9fafb;
+      --border: #e5e7eb;
+      --ig-gradient: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      --tiktok-color: #000;
+      --twitter-color: #1da1f2;
+      --xiaohongshu-color: #ff2442;
+    }
+
+    body {
+      font-family: 'Noto Sans SC', 'Space Grotesk', sans-serif;
+      background: var(--bg-main);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* 左侧导航 */
+    .sidebar {
+      width: 240px;
+      background: var(--bg-dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .logo h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo h1 span {
+      font-size: 26px;
+    }
+
+    .logo p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 16px 12px;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.9);
+    }
+
+    .nav-item.active {
+      background: var(--accent-purple);
+      color: white;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+
+    .nav-item .icon {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+
+    .nav-item .badge {
+      margin-left: auto;
+      background: var(--accent-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .nav-item.active .badge {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .user-profile {
+      padding: 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .user-info {
+      flex: 1;
+    }
+
+    .user-info .name {
+      color: var(--text-light);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .user-info .role {
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+
+    /* 主内容区 */
+    .main {
+      flex: 1;
+      margin-left: 240px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* 顶部栏 */
+    .header {
+      height: 72px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header-left h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .header-left .subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      padding: 4px 12px;
+      background: #f3f4f6;
+      border-radius: 20px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .search-box:hover {
+      border-color: var(--accent-purple);
+      background: white;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent-purple);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    /* 筛选栏 */
+    .filter-bar {
+      height: 56px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .filter-tag {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-tag:hover {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+    }
+
+    .filter-tag.active {
+      background: var(--accent-purple);
+      border-color: var(--accent-purple);
+      color: white;
+    }
+
+    .filter-tag .count {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .filter-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 8px;
+    }
+
+    .platform-filters {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .platform-tag {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-secondary);
+    }
+
+    .platform-tag:hover {
+      transform: scale(1.05);
+    }
+
+    .platform-tag.ig { border-color: #e1306c; color: #e1306c; }
+    .platform-tag.tt { border-color: #000; color: #000; }
+    .platform-tag.tw { border-color: #1da1f2; color: #1da1f2; }
+    .platform-tag.xhs { border-color: #ff2442; color: #ff2442; }
+
+    /* 内容区域 */
+    .content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* 消息列表 */
+    .message-list {
+      width: 400px;
+      background: white;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+    }
+
+    .message-item {
+      padding: 18px 20px;
+      border-bottom: 1px solid #f3f4f6;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .message-item:hover {
+      background: #f9fafb;
+    }
+
+    .message-item.active {
+      background: #faf5ff;
+      border-left: 3px solid var(--accent-purple);
+    }
+
+    .message-item.high-intent {
+      background: linear-gradient(90deg, #fef2f2, white);
+    }
+
+    .message-item.auto-replied {
+      background: linear-gradient(90deg, #ecfdf5, white);
+    }
+
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .intent-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .intent-badge.high { background: var(--accent-red); }
+    .intent-badge.inquiry { background: var(--accent-orange); }
+    .intent-badge.chat { background: #9ca3af; }
+    .intent-badge.auto { background: var(--accent-green); }
+
+    .platform-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .platform-badge.ig { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743); }
+    .platform-badge.tt { background: #000; }
+    .platform-badge.tw { background: #1da1f2; }
+    .platform-badge.xhs { background: #ff2442; }
+
+    .message-time {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .message-body {
+      display: flex;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .message-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .message-username {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .message-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.5;
+    }
+
+    .message-meta {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+
+    .auto-reply-preview {
+      font-size: 11px;
+      color: var(--accent-green);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 详情面板 */
+    .detail-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f9fafb;
+    }
+
+    .detail-header {
+      padding: 20px 28px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .detail-avatar {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .detail-user-info {
+      flex: 1;
+    }
+
+    .detail-username {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .detail-user-meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-user-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      padding: 10px 16px;
+      background: #f3f4f6;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+      color: var(--text-primary);
+    }
+
+    /* 对话区域 */
+    .conversation {
+      flex: 1;
+      padding: 24px 28px;
+      overflow-y: auto;
+    }
+
+    .context-card {
+      background: white;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .context-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .context-content {
+      display: flex;
+      gap: 14px;
+    }
+
+    .context-thumb {
+      width: 88px;
+      height: 88px;
+      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .context-info h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+
+    .context-stats {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 消息气泡 */
+    .message-bubble-wrap {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .bubble-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .message-bubble {
+      background: white;
+      padding: 14px 18px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      max-width: 75%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .message-bubble p {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+
+    .bubble-time {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 8px;
+    }
+
+    /* AI建议卡片 */
+    .ai-suggestion {
+      background: linear-gradient(135deg, #faf5ff, #f3e8ff);
+      border: 2px dashed var(--accent-purple-light);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .ai-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .ai-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-purple);
+    }
+
+    .ai-confidence {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: 8px;
+    }
+
+    .ai-content {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.7;
+      margin-bottom: 16px;
+      padding: 14px;
+      background: white;
+      border-radius: 10px;
+    }
+
+    .ai-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .ai-btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ai-btn-primary {
+      background: var(--accent-purple);
+      color: white;
+    }
+
+    .ai-btn-primary:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+    }
+
+    .ai-btn-secondary {
+      background: white;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .ai-btn-secondary:hover {
+      border-color: var(--accent-purple);
+      color: var(--accent-purple);
+    }
+
+    /* 回复输入框 */
+    .reply-panel {
+      padding: 20px 28px;
+      background: white;
+      border-top: 1px solid var(--border);
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .quick-btn {
+      padding: 6px 14px;
+      background: #f3f4f6;
+      border: none;
+      border-radius: 20px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .quick-btn:hover {
+      background: #e5e7eb;
+      color: var(--accent-purple);
+    }
+
+    .reply-input-wrap {
+      display: flex;
+      gap: 12px;
+    }
+
+    .reply-input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      color: var(--text-primary);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .reply-input:focus {
+      border-color: var(--accent-purple);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .reply-input::placeholder {
+      color: #9ca3af;
+    }
+
+    .send-btn {
+      padding: 14px 28px;
+      background: var(--accent-purple);
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      background: #6d28d9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-item {
+      animation: fadeIn 0.3s ease;
+    }
+
+    .ai-suggestion {
+      animation: fadeIn 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+  <!-- 左侧导航 -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1><span>🎌</span> AnimeMart</h1>
+      <p>运营工作台 v1.0</p>
+    </div>
+    
+    <nav class="nav">
+      <div class="nav-item active">
+        <span class="icon">💬</span>
+        <span>消息中心</span>
+        <span class="badge">23</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📅</span>
+        <span>内容日历</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">🔥</span>
+        <span>热点雷达</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">✍️</span>
+        <span>内容审核</span>
+        <span class="badge">5</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📊</span>
+        <span>数据报表</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">⚙️</span>
+        <span>工作流配置</span>
+      </div>
+    </nav>
+
+    <div class="user-profile">
+      <div class="user-avatar">V</div>
+      <div class="user-info">
+        <div class="name">Vincent</div>
+        <div class="role">运营主管</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main">
+    <!-- 顶部栏 -->
+    <header class="header">
+      <div class="header-left">
+        <h2>消息中心</h2>
+        <span class="subtitle">跨平台消息统一管理</span>
+      </div>
+      <div class="header-right">
+        <div class="search-box">
+          🔍 搜索消息...
+        </div>
+        <button class="btn btn-primary">+ 快捷回复模板</button>
+      </div>
+    </header>
+
+    <!-- 筛选栏 -->
+    <div class="filter-bar">
+      <div class="filter-tag active">
+        全部 <span class="count">(23)</span>
+      </div>
+      <div class="filter-tag">
+        🔴 高意向 <span class="count">(4)</span>
+      </div>
+      <div class="filter-tag">
+        💬 待处理 <span class="count">(12)</span>
+      </div>
+      <div class="filter-tag">
+        ✅ 已自动回复 <span class="count">(5)</span>
+      </div>
+      <div class="filter-tag">
+        ⚠️ 需关注 <span class="count">(2)</span>
+      </div>
+
+      <div class="platform-filters">
+        <div class="platform-tag ig">Instagram</div>
+        <div class="platform-tag tt">TikTok</div>
+        <div class="platform-tag tw">Twitter</div>
+        <div class="platform-tag xhs">小红书</div>
+      </div>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="content">
+      <!-- 消息列表 -->
+      <div class="message-list">
+        <!-- 高意向消息1 -->
+        <div class="message-item high-intent active">
+          <div class="message-header">
+            <span class="intent-badge high">🔴 高意向</span>
+            <span class="platform-badge ig">Instagram</span>
+            <span class="message-time">2分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">@anime_collector_92</div>
+              <div class="message-text">这个五条悟手办怎么买？有链接吗？好想要！！</div>
+              <div class="message-meta">粉丝: 2.3k · 历史购买: 2次</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 高意向消息2 -->
+        <div class="message-item high-intent">
+          <div class="message-header">
+            <span class="intent-badge high">🔴 高意向</span>
+            <span class="platform-badge tt">TikTok</span>
+            <span class="message-time">5分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">@jjk_stan_forever</div>
+              <div class="message-text">ship to Canada? how much?</div>
+              <div class="message-meta">粉丝: 890 · 新客户</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 咨询消息 -->
+        <div class="message-item">
+          <div class="message-header">
+            <span class="intent-badge inquiry">💬 咨询</span>
+            <span class="platform-badge tw">Twitter</span>
+            <span class="message-time">8分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">@otaku_mike</div>
+              <div class="message-text">Is this figure authentic? Can you show the box?</div>
+              <div class="message-meta">粉丝: 456 · 新客户</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 已自动回复1 -->
+        <div class="message-item auto-replied">
+          <div class="message-header">
+            <span class="intent-badge auto">✅ 已自动回复</span>
+            <span class="platform-badge ig">Instagram</span>
+            <span class="message-time">12分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">@kawaii_neko_chan</div>
+              <div class="message-text">太可爱了！！😍😍😍</div>
+              <div class="auto-reply-preview">→ 已回复: "谢谢支持～更多新品可以关注我们哦 💕"</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 已自动回复2 -->
+        <div class="message-item auto-replied">
+          <div class="message-header">
+            <span class="intent-badge auto">✅ 已自动回复</span>
+            <span class="platform-badge xhs">小红书</span>
+            <span class="message-time">15分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">小仙女爱手办</div>
+              <div class="message-text">种草了种草了！</div>
+              <div class="auto-reply-preview">→ 已回复: "嘿嘿被种草就对啦～链接在主页置顶 🌸"</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 更多消息 -->
+        <div class="message-item">
+          <div class="message-header">
+            <span class="intent-badge chat">💭 闲聊</span>
+            <span class="platform-badge tt">TikTok</span>
+            <span class="message-time">20分钟前</span>
+          </div>
+          <div class="message-body">
+            <div class="avatar">👤</div>
+            <div class="message-content">
+              <div class="message-username">@anime_vibes_only</div>
+              <div class="message-text">This is fire 🔥🔥🔥</div>
+              <div class="message-meta">粉丝: 1.2k · 新客户</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 详情面板 -->
+      <div class="detail-panel">
+        <!-- 用户信息 -->
+        <div class="detail-header">
+          <div class="detail-avatar">👤</div>
+          <div class="detail-user-info">
+            <div class="detail-username">@anime_collector_92</div>
+            <div class="detail-user-meta">
+              <span>📱 Instagram</span>
+              <span>👥 粉丝 2.3k</span>
+              <span>🛒 曾购买 2 次</span>
+              <span>💰 客单价 $89</span>
+            </div>
+          </div>
+          <div class="detail-actions">
+            <button class="btn-secondary">↗ 查看原帖</button>
+            <button class="btn-secondary">👤 用户画像</button>
+          </div>
+        </div>
+
+        <!-- 对话区域 -->
+        <div class="conversation">
+          <!-- 关联帖子 -->
+          <div class="context-card">
+            <div class="context-label">💬 评论于帖子</div>
+            <div class="context-content">
+              <div class="context-thumb">🎌</div>
+              <div class="context-info">
+                <h4>【现货】咒术回战 五条悟 战斗版手办 1/7比例 正版授权</h4>
+                <div class="context-stats">
+                  <span>❤️ 1.2k</span>
+                  <span>💬 89</span>
+                  <span>📅 发布于 2小时前</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 用户消息 -->
+          <div class="message-bubble-wrap">
+            <div class="bubble-avatar">👤</div>
+            <div class="message-bubble">
+              <p>这个五条悟手办怎么买？有链接吗？好想要！！</p>
+              <div class="bubble-time">2分钟前</div>
+            </div>
+          </div>
+
+          <!-- AI建议 -->
+          <div class="ai-suggestion">
+            <div class="ai-header">
+              <div class="ai-icon">🤖</div>
+              <span class="ai-label">AI 建议回复</span>
+              <span class="ai-confidence">置信度 94%</span>
+            </div>
+            <div class="ai-content">
+              宝子可以直接点主页链接下单哦～ 这款五条悟是正版授权的，做工超精细！现在用码 GOJO10 还有9折优惠，手慢无 ✨
+            </div>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-primary">✓ 采用并发送</button>
+              <button class="ai-btn ai-btn-secondary">✏️ 编辑后发送</button>
+              <button class="ai-btn ai-btn-secondary">✕ 忽略建议</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 回复输入框 -->
+        <div class="reply-panel">
+          <div class="quick-actions">
+            <button class="quick-btn">🔗 插入商品链接</button>
+            <button class="quick-btn">🎫 插入优惠码</button>
+            <button class="quick-btn">📝 快捷回复</button>
+            <button class="quick-btn">🤖 AI 重写</button>
+          </div>
+          <div class="reply-input-wrap">
+            <input type="text" class="reply-input" placeholder="输入回复内容...">
+            <button class="send-btn">发送</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
