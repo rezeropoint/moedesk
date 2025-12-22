@@ -19,10 +19,12 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+Thumbs.db
 
 # debug
 npm-debug.log*
@@ -30,8 +32,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +43,36 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/*.db
+
+# SQLite local database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Docker local data (if any)
+docker-data/
+postgres-data/
+n8n-data/
+
+# Claude Code
+.claude/
+
+# OS generated
+Desktop.ini
+ehthumbs.db
+
+# Logs
+logs/
+*.log
