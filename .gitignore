@@ -76,3 +76,5 @@ ehthumbs.db
 # Logs
 logs/
 *.log
+
+/lib/generated/prisma

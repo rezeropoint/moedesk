@@ -454,9 +454,11 @@ Phase 1: 基础框架 ✅ 已完成
 ├── ✅ 配置 shadcn/ui
 ├── ✅ Docker 容器化（Dockerfile + docker-compose）
 ├── ✅ 集成 n8n 中文版 + PostgreSQL
-├── 创建全局布局（侧边栏 + 顶栏）
-├── 配置 Prisma + SQLite/PostgreSQL
-└── 创建基础 API 结构
+├── ✅ 创建全局布局（侧边栏 + 顶栏）
+├── ✅ 配置 Prisma + SQLite（本地使用 better-sqlite3 适配器）
+├── ✅ 用户认证系统（JWT + middleware）
+├── ✅ 登录页面 + 用户管理页面
+└── ✅ 创建所有页面骨架（inbox/content/trending/review/analytics/workflows）
 
 Phase 2: 统一收件箱
 ├── 消息列表组件
@@ -524,12 +526,13 @@ docker-compose 包含三个服务：
 
 | 服务 | 镜像 | 端口 | 说明 |
 |------|------|------|------|
-| app | moedesk-app | 3000 | Next.js 前端应用 |
+| app | moedesk-app | 3443 | Next.js 前端应用 |
 | n8n | blowsnow/n8n-chinese | 5678 | 工作流引擎（中文版） |
 | db | postgres:16-alpine | 15432 | PostgreSQL 数据库 |
 
 **访问地址：**
-- 前端：http://localhost:3000
+- 前端（Docker）：http://localhost:3443
+- 前端（本地开发）：http://localhost:3000
 - n8n 工作流：http://localhost:5678
 - 数据库：localhost:15432（用户: postgres，密码: postgres）
 
