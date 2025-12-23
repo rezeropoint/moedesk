@@ -36,7 +36,7 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-60 bg-[#0f0f1a] text-white flex flex-col">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-60 bg-sidebar-bg text-white flex flex-col">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
         <span className="text-2xl">🎌</span>
@@ -57,7 +57,7 @@ export function Sidebar({ user }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-[#7c3aed] text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "text-gray-300 hover:bg-white/10 hover:text-white"
               )}
             >
@@ -84,7 +84,7 @@ export function Sidebar({ user }: SidebarProps) {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-[#7c3aed] text-white"
+                      ? "bg-primary text-primary-foreground"
                       : "text-gray-300 hover:bg-white/10 hover:text-white"
                   )}
                 >

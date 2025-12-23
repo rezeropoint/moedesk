@@ -15,7 +15,7 @@ function SubmitButton() {
   return (
     <Button
       type="submit"
-      className="w-full bg-[#7c3aed] hover:bg-[#6d28d9]"
+      className="w-full bg-primary hover:bg-primary/90"
       disabled={pending}
     >
       {pending ? (

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,10 +37,13 @@ export function UserNav({ user }: UserNavProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-3 w-full p-2 rounded-lg hover:bg-white/10 transition-colors text-left">
+        <Button
+          variant="ghost"
+          className="flex items-center gap-3 w-full p-2 h-auto rounded-lg hover:bg-white/10 text-left justify-start"
+        >
           <Avatar className="h-9 w-9">
             <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
-            <AvatarFallback className="bg-[#7c3aed] text-white text-sm">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -52,7 +56,7 @@ export function UserNav({ user }: UserNavProps) {
             </p>
           </div>
           <ChevronUp className="h-4 w-4 text-gray-400" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">

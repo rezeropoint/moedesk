@@ -4,8 +4,8 @@ export default function InboxPage() {
   return (
     <div className="p-8">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-[#7c3aed]/10 rounded-lg">
-          <MessageSquare className="h-6 w-6 text-[#7c3aed]" />
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <MessageSquare className="h-6 w-6 text-primary" />
         </div>
         <div>
           <h1 className="text-2xl font-bold">消息中心</h1>
