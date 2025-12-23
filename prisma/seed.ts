@@ -1,16 +1,14 @@
 import "dotenv/config"
 import bcrypt from "bcryptjs"
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3"
+import { Pool } from "pg"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaClient } from "../lib/generated/prisma/client.js"
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const adapter = new PrismaPg(pool)
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  // 创建 SQLite adapter factory
-  const dbPath = process.env.DATABASE_URL || "file:./prisma/dev.db"
-  const adapter = new PrismaBetterSqlite3({ url: dbPath.replace("file:", "") })
-
-  // 动态导入 Prisma Client
-  const { PrismaClient } = await import("../lib/generated/prisma/client.js")
-  const prisma = new PrismaClient({ adapter })
-
   try {
     const adminEmail = "admin@moedesk.com"
 
@@ -42,6 +40,7 @@ async function main() {
     throw error
   } finally {
     await prisma.$disconnect()
+    await pool.end()
   }
 }
 

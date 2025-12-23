@@ -15,8 +15,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="postgresql://postgres:postgres@db:5432/moedesk"
 
-RUN npm run build
+RUN npx prisma generate && npm run build
 
 # 生产运行阶段
 FROM base AS runner
