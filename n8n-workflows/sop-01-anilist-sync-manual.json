@@ -1,0 +1,209 @@
+{
+  "name": "SOP-01 AniList 新番同步（手动触发）",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sop-01/sync",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook 触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "sop-01-sync"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\n\nconst now = new Date();\nconst month = now.getMonth() + 1;\nlet currentSeason;\nif (month >= 1 && month <= 3) currentSeason = 'WINTER';\nelse if (month >= 4 && month <= 6) currentSeason = 'SPRING';\nelse if (month >= 7 && month <= 9) currentSeason = 'SUMMER';\nelse currentSeason = 'FALL';\n\nreturn [{\n  json: {\n    season: body.season || currentSeason,\n    seasonYear: body.seasonYear || now.getFullYear(),\n    page: body.page || 1\n  }\n}];"
+      },
+      "id": "code-params",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graphql.anilist.co",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query ($season: MediaSeason, $seasonYear: Int, $page: Int) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage currentPage } media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC) { id title { romaji english native } description(asHtml: false) coverImage { large } startDate { year month day } endDate { year month day } genres averageScore popularity studios(isMain: true) { nodes { name } } } } }\",\n  \"variables\": {\n    \"season\": \"{{ $json.season }}\",\n    \"seasonYear\": {{ $json.seasonYear }},\n    \"page\": {{ $json.page }}\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "anilist-request",
+      "name": "AniList GraphQL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nconst mediaList = $input.first().json.data?.Page?.media || [];\n\nlet autoApproved = 0;\nlet manualReview = 0;\nlet autoRejected = 0;\n\nfor (const anime of mediaList) {\n  const popScore = Math.min((anime.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = anime.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  let tier;\n  if (totalScore >= 75) {\n    tier = 'auto_approve';\n    autoApproved++;\n  } else if (totalScore >= 50) {\n    tier = 'manual_review';\n    manualReview++;\n  } else {\n    tier = 'auto_reject';\n    autoRejected++;\n  }\n  \n  let releaseDate = 'NULL';\n  if (anime.startDate?.year) {\n    releaseDate = `'${anime.startDate.year}-${String(anime.startDate.month || 1).padStart(2, '0')}-${String(anime.startDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  let endDate = 'NULL';\n  if (anime.endDate?.year) {\n    endDate = `'${anime.endDate.year}-${String(anime.endDate.month || 1).padStart(2, '0')}-${String(anime.endDate.day || 1).padStart(2, '0')}'`;\n  }\n\n  const escapeStr = (s) => s ? `'${String(s).replace(/'/g, \"''\")}'` : 'NULL';\n  const tagsArray = anime.genres?.length ? `ARRAY[${anime.genres.map(g => escapeStr(g)).join(',')}]::TEXT[]` : 'ARRAY[]::TEXT[]';\n  const ipId = `anilist_${anime.id}`;\n  \n  results.push({\n    json: {\n      id: ipId,\n      tier: tier,\n      sql_id: escapeStr(ipId),\n      sql_trending_id: escapeStr(`trending_${ipId}`),\n      sql_type: \"'ANIME'\",\n      sql_source: \"'AUTO'\",\n      sql_titleOriginal: escapeStr(anime.title.native || anime.title.romaji),\n      sql_titleChinese: 'NULL',\n      sql_titleEnglish: escapeStr(anime.title.english || anime.title.romaji),\n      sql_description: escapeStr(anime.description?.replace(/<[^>]*>/g, '').substring(0, 1000)),\n      sql_coverImage: escapeStr(anime.coverImage?.large),\n      sql_tags: tagsArray,\n      sql_releaseDate: releaseDate,\n      sql_endDate: endDate,\n      sql_popularityScore: anime.popularity || 0,\n      sql_ratingScore: anime.averageScore || 0,\n      sql_totalScore: totalScore,\n      sql_metadata: escapeStr(JSON.stringify({ anilistId: anime.id, studios: anime.studios?.nodes?.map(s => s.name) || [] })),\n      sql_externalUrls: escapeStr(JSON.stringify({ anilist: `https://anilist.co/anime/${anime.id}` })),\n      _stats: { total: mediaList.length, autoApproved, manualReview, autoRejected }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { tier: 'empty', _stats: { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 } } }];\n}\n\nreturn results;"
+      },
+      "id": "code-process",
+      "name": "数据处理与评分",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
+                "combinator": "and",
+                "conditions": [{ "leftValue": "={{ $json.tier }}", "rightValue": "auto_approve", "operator": { "type": "string", "operation": "equals" } }]
+              },
+              "renameOutput": true,
+              "outputKey": "高热度入库"
+            },
+            {
+              "conditions": {
+                "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
+                "combinator": "and",
+                "conditions": [{ "leftValue": "={{ $json.tier }}", "rightValue": "manual_review", "operator": { "type": "string", "operation": "equals" } }]
+              },
+              "renameOutput": true,
+              "outputKey": "待人工审核"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "switch-tier",
+      "name": "分流判断",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO ips (id, type, source, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", \"syncedAt\", \"createdAt\", \"updatedAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_source }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  NOW(),\n  NOW(),\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"releaseDate\" = EXCLUDED.\"releaseDate\",\n  \"endDate\" = EXCLUDED.\"endDate\",\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\",\n  \"syncedAt\" = NOW(),\n  \"updatedAt\" = NOW();\n\nINSERT INTO trendings (id, \"ipId\", status, \"createdAt\", \"updatedAt\")\nVALUES (\n  {{ $json.sql_trending_id }},\n  {{ $json.sql_id }},\n  'WATCHING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (\"ipId\") DO NOTHING;",
+        "options": {}
+      },
+      "id": "postgres-ips",
+      "name": "写入 ips 表",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1100, -120],
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "MoeDesk PostgreSQL"
+        }
+      }
+    },
+        {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO ip_reviews (id, type, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", status)\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  'PENDING'\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\";",
+        "options": {}
+      },
+      "id": "postgres-reviews",
+      "name": "写入 ip_reviews 表",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1100, 0],
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "MoeDesk PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "noop-reject",
+      "name": "丢弃低热度",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1100, 120]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-all",
+      "name": "合并分支",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst stats = allItems[0]?.json?._stats || { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 };\n\nreturn [{\n  json: {\n    success: true,\n    message: '同步完成',\n    stats: stats,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-stats",
+      "name": "生成响应",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "返回结果",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1980, 0]
+    }
+  ],
+  "connections": {
+    "Webhook 触发": {
+      "main": [[{ "node": "解析参数", "type": "main", "index": 0 }]]
+    },
+    "解析参数": {
+      "main": [[{ "node": "AniList GraphQL", "type": "main", "index": 0 }]]
+    },
+    "AniList GraphQL": {
+      "main": [[{ "node": "数据处理与评分", "type": "main", "index": 0 }]]
+    },
+    "数据处理与评分": {
+      "main": [[{ "node": "分流判断", "type": "main", "index": 0 }]]
+    },
+    "分流判断": {
+      "main": [
+        [{ "node": "写入 ips 表", "type": "main", "index": 0 }],
+        [{ "node": "写入 ip_reviews 表", "type": "main", "index": 0 }],
+        [{ "node": "丢弃低热度", "type": "main", "index": 0 }]
+      ]
+    },
+    "写入 ips 表": {
+      "main": [[{ "node": "合并分支", "type": "main", "index": 0 }]]
+    },
+    "写入 ip_reviews 表": {
+      "main": [[{ "node": "合并分支", "type": "main", "index": 1 }]]
+    },
+    "丢弃低热度": {
+      "main": [[{ "node": "合并分支", "type": "main", "index": 2 }]]
+    },
+    "合并分支": {
+      "main": [[{ "node": "生成响应", "type": "main", "index": 0 }]]
+    },
+    "生成响应": {
+      "main": [[{ "node": "返回结果", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}
