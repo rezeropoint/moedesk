@@ -41,3 +41,157 @@ model Session {
   @@index([userId])
   @@map("sessions")
 }
+
+// ============================================================================
+// IP 相关表（泛宅文化：番剧、游戏、漫画、轻小说、Vtuber 等）
+// ============================================================================
+
+/// IP 类型枚举
+enum IpType {
+  ANIME        // 番剧
+  GAME         // 游戏
+  MANGA        // 漫画
+  LIGHT_NOVEL  // 轻小说
+  VTUBER       // 虚拟主播
+  MOVIE        // 剧场版/电影
+  OTHER        // 其他
+}
+
+/// IP 来源枚举
+enum IpSource {
+  AUTO             // 自动入库（高热度）
+  MANUAL_APPROVED  // 人工审核通过
+  MANUAL_ADDED     // 手动添加
+}
+
+/// 审核状态枚举
+enum ReviewStatus {
+  PENDING   // 待审核
+  APPROVED  // 已通过
+  REJECTED  // 已拒绝
+}
+
+/// 热度追踪状态枚举
+enum TrendingStatus {
+  WATCHING     // 观望中
+  FOCUSED      // 重点关注
+  IN_PROGRESS  // 已创建选题
+  ARCHIVED     // 已归档
+}
+
+/// IP 表 - 正式入库的 IP 数据
+model Ip {
+  id            String    @id                      // 外部平台 ID（如 AniList media id）
+  type          IpType                             // IP 类型
+  source        IpSource  @default(AUTO)           // 入库来源
+
+  // 基础信息（所有类型通用）
+  titleOriginal String                             // 原始标题
+  titleChinese  String?                            // 中文标题
+  titleEnglish  String?                            // 英文标题
+  description   String?                            // 简介
+  coverImage    String?                            // 封面图 URL
+  tags          String[]                           // 标签/类型（如 ["动作", "奇幻"]）
+
+  // 时间相关（通用）
+  releaseDate   DateTime?                          // 发布/开播日期
+  endDate       DateTime?                          // 完结日期（番剧/游戏运营结束）
+
+  // 热度数据（定时更新）
+  popularityScore  Int?                            // 平台热度值
+  ratingScore      Int?                            // 平台评分（0-100）
+  totalScore       Int      @default(0)            // n8n 计算的综合分
+
+  // 类型特定字段（JSON 存储，按 type 解析）
+  // Anime: { season, seasonYear, episodes, studios, anilistId }
+  // Game: { platforms, developer, publisher, steamId }
+  // Manga: { chapters, author, serialization }
+  // Vtuber: { agency, youtubeChannel, subscribers }
+  metadata      Json?
+
+  // 外部链接
+  externalUrls  Json?                              // { anilist, mal, steam, vndb, ... }
+
+  // 元数据
+  syncedAt      DateTime  @default(now())          // 最后同步时间
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联
+  trendings     Trending[]
+
+  @@index([type])
+  @@index([totalScore])
+  @@index([releaseDate])
+  @@map("ips")
+}
+
+/// IP 待审核表 - 灰色地带数据，需人工决策
+model IpReview {
+  id            String    @id                      // 外部平台 ID
+  type          IpType
+
+  // 基础信息（同 Ip 表）
+  titleOriginal String
+  titleChinese  String?
+  titleEnglish  String?
+  description   String?
+  coverImage    String?
+  tags          String[]
+
+  releaseDate   DateTime?
+  endDate       DateTime?
+
+  popularityScore  Int?
+  ratingScore      Int?
+  totalScore       Int      @default(0)
+
+  metadata      Json?
+  externalUrls  Json?
+
+  // 审核相关
+  status        ReviewStatus @default(PENDING)
+  reviewedBy    String?                            // 审核人 User.id
+  reviewedAt    DateTime?
+  reviewNote    String?                            // 审核备注（拒绝原因等）
+
+  createdAt     DateTime  @default(now())
+
+  @@index([status])
+  @@index([type])
+  @@index([totalScore])
+  @@map("ip_reviews")
+}
+
+/// 热度追踪表 - 运营决策数据
+model Trending {
+  id              String   @id @default(cuid())
+
+  // 关联 IP
+  ipId            String
+  ip              Ip       @relation(fields: [ipId], references: [id], onDelete: Cascade)
+
+  // 多源热度数据（定时更新）
+  redditKarma     Int?                             // Reddit karma（番剧）
+  googleTrend     Int?                             // Google Trends 分数
+  twitterMentions Int?                             // Twitter/X 提及数
+  biliDanmaku     Int?                             // B站弹幕数（可选）
+
+  // AI 评估结果
+  merchandiseScore Int?                            // 周边潜力分 (0-100)
+  aiAnalysis       Json?                           // AI 分析详情
+  // { pros: [], cons: [], timing: "", productSuggestions: [] }
+
+  // 运营状态
+  status          TrendingStatus @default(WATCHING)
+
+  // 时间戳
+  evaluatedAt     DateTime?                        // AI 评估时间
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([ipId])                                 // 一个 IP 只有一条 Trending 记录
+  @@index([status])
+  @@index([merchandiseScore])
+  @@map("trendings")
+}
