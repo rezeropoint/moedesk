@@ -4,12 +4,7 @@
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "triggerAtHour": 9,
-              "triggerAtDay": 1
-            }
-          ]
+          "interval": [{ "triggerAtHour": 9, "triggerAtDay": 1 }]
         }
       },
       "id": "schedule-trigger",
@@ -20,7 +15,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst month = now.getMonth() + 1;\nlet currentSeason;\nif (month >= 1 && month <= 3) currentSeason = 'WINTER';\nelse if (month >= 4 && month <= 6) currentSeason = 'SPRING';\nelse if (month >= 7 && month <= 9) currentSeason = 'SUMMER';\nelse currentSeason = 'FALL';\n\nreturn [{\n  json: {\n    season: currentSeason,\n    seasonYear: now.getFullYear(),\n    page: 1\n  }\n}];"
+        "jsCode": "const now = new Date();\nconst month = now.getMonth() + 1;\nlet currentSeason;\nif (month >= 1 && month <= 3) currentSeason = 'WINTER';\nelse if (month >= 4 && month <= 6) currentSeason = 'SPRING';\nelse if (month >= 7 && month <= 9) currentSeason = 'SUMMER';\nelse currentSeason = 'FALL';\n\nreturn [{ json: { season: currentSeason, seasonYear: now.getFullYear(), page: 1 } }];"
       },
       "id": "code-params",
       "name": "计算当前季度",
@@ -34,14 +29,8 @@
         "url": "https://graphql.anilist.co",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"query ($season: MediaSeason, $seasonYear: Int, $page: Int) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage currentPage } media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC) { id title { romaji english native } description(asHtml: false) coverImage { large } startDate { year month day } endDate { year month day } genres averageScore popularity studios(isMain: true) { nodes { name } } } } }\",\n  \"variables\": {\n    \"season\": \"{{ $json.season }}\",\n    \"seasonYear\": {{ $json.seasonYear }},\n    \"page\": {{ $json.page }}\n  }\n}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "jsonBody": "={\n  \"query\": \"query ($season: MediaSeason, $seasonYear: Int, $page: Int) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage currentPage } media(season: $season, seasonYear: $seasonYear, type: ANIME, sort: POPULARITY_DESC) { id title { romaji english native } description(asHtml: false) coverImage { large } startDate { year month day } endDate { year month day } genres averageScore popularity studios(isMain: true) { nodes { name } } } } }\",\n  \"variables\": { \"season\": \"{{ $json.season }}\", \"seasonYear\": {{ $json.seasonYear }}, \"page\": {{ $json.page }} }\n}",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
       },
       "id": "anilist-request",
       "name": "AniList GraphQL",
@@ -51,143 +40,118 @@
     },
     {
       "parameters": {
-        "jsCode": "const results = [];\nconst mediaList = $input.first().json.data?.Page?.media || [];\n\nlet autoApproved = 0;\nlet manualReview = 0;\nlet autoRejected = 0;\n\nfor (const anime of mediaList) {\n  const popScore = Math.min((anime.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = anime.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  let tier;\n  if (totalScore >= 75) {\n    tier = 'auto_approve';\n    autoApproved++;\n  } else if (totalScore >= 50) {\n    tier = 'manual_review';\n    manualReview++;\n  } else {\n    tier = 'auto_reject';\n    autoRejected++;\n  }\n  \n  let releaseDate = 'NULL';\n  if (anime.startDate?.year) {\n    releaseDate = `'${anime.startDate.year}-${String(anime.startDate.month || 1).padStart(2, '0')}-${String(anime.startDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  let endDate = 'NULL';\n  if (anime.endDate?.year) {\n    endDate = `'${anime.endDate.year}-${String(anime.endDate.month || 1).padStart(2, '0')}-${String(anime.endDate.day || 1).padStart(2, '0')}'`;\n  }\n\n  const escapeStr = (s) => s ? `'${String(s).replace(/'/g, \"''\")}'` : 'NULL';\n  const tagsArray = anime.genres?.length ? `ARRAY[${anime.genres.map(g => escapeStr(g)).join(',')}]::TEXT[]` : 'ARRAY[]::TEXT[]';\n  const ipId = `anilist_${anime.id}`;\n  \n  results.push({\n    json: {\n      id: ipId,\n      tier: tier,\n      sql_id: escapeStr(ipId),\n      sql_trending_id: escapeStr(`trending_${ipId}`),\n      sql_type: \"'ANIME'\",\n      sql_source: \"'AUTO'\",\n      sql_titleOriginal: escapeStr(anime.title.native || anime.title.romaji),\n      sql_titleChinese: 'NULL',\n      sql_titleEnglish: escapeStr(anime.title.english || anime.title.romaji),\n      sql_description: escapeStr(anime.description?.replace(/<[^>]*>/g, '').substring(0, 1000)),\n      sql_coverImage: escapeStr(anime.coverImage?.large),\n      sql_tags: tagsArray,\n      sql_releaseDate: releaseDate,\n      sql_endDate: endDate,\n      sql_popularityScore: anime.popularity || 0,\n      sql_ratingScore: anime.averageScore || 0,\n      sql_totalScore: totalScore,\n      sql_metadata: escapeStr(JSON.stringify({ anilistId: anime.id, studios: anime.studios?.nodes?.map(s => s.name) || [] })),\n      sql_externalUrls: escapeStr(JSON.stringify({ anilist: `https://anilist.co/anime/${anime.id}` })),\n      _stats: { total: mediaList.length, autoApproved, manualReview, autoRejected }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { tier: 'empty', _stats: { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 } } }];\n}\n\nreturn results;"
+        "jsCode": "const mediaList = $input.first().json.data?.Page?.media || [];\nconst results = [];\nlet autoRejected = 0;\n\nfor (const anime of mediaList) {\n  // 先计算评分，筛选高热度\n  const popScore = Math.min((anime.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = anime.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  if (totalScore < 50) {\n    autoRejected++;\n    continue; // 跳过低热度\n  }\n  \n  results.push({\n    json: {\n      searchKeyword: anime.title.native || anime.title.romaji,\n      originalData: anime,\n      totalScore,\n      _stats: { autoRejected }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, _stats: { total: mediaList.length, manualReview: 0, autoRejected } } }];\n}\n\nreturn results;"
       },
-      "id": "code-process",
-      "name": "数据处理与评分",
+      "id": "code-preprocess",
+      "name": "预处理",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [660, 0]
     },
     {
       "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
-                "combinator": "and",
-                "conditions": [{ "leftValue": "={{ $json.tier }}", "rightValue": "auto_approve", "operator": { "type": "string", "operation": "equals" } }]
-              },
-              "renameOutput": true,
-              "outputKey": "高热度入库"
-            },
-            {
-              "conditions": {
-                "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
-                "combinator": "and",
-                "conditions": [{ "leftValue": "={{ $json.tier }}", "rightValue": "manual_review", "operator": { "type": "string", "operation": "equals" } }]
-              },
-              "renameOutput": true,
-              "outputKey": "待人工审核"
-            }
-          ]
-        },
-        "options": { "fallbackOutput": "extra" }
+        "batchSize": 1,
+        "options": {}
       },
-      "id": "switch-tier",
-      "name": "分流判断",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
+      "id": "loop-items",
+      "name": "循环处理",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
       "position": [880, 0]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO ips (id, type, source, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", \"syncedAt\", \"createdAt\", \"updatedAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_source }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  NOW(),\n  NOW(),\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"releaseDate\" = EXCLUDED.\"releaseDate\",\n  \"endDate\" = EXCLUDED.\"endDate\",\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\",\n  \"syncedAt\" = NOW(),\n  \"updatedAt\" = NOW();\n\nINSERT INTO trendings (id, \"ipId\", status, \"createdAt\", \"updatedAt\")\nVALUES (\n  {{ $json.sql_trending_id }},\n  {{ $json.sql_id }},\n  'WATCHING',\n  NOW(),\n  NOW()\n)\nON CONFLICT (\"ipId\") DO NOTHING;",
-        "options": {}
+        "method": "POST",
+        "url": "https://api.bgm.tv/v0/search/subjects",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "MoeDesk/1.0 (https://github.com/moedesk)" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"keyword\": \"{{ $json.searchKeyword }}\",\n  \"filter\": { \"type\": [2] }\n}",
+        "options": { "timeout": 5000, "response": { "response": { "responseFormat": "json" } } }
       },
-      "id": "postgres-ips",
-      "name": "写入 ips 表",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1100, -120],
-      "credentials": {
-        "postgres": {
-          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
-          "name": "MoeDesk PostgreSQL"
-        }
-      }
+      "id": "bangumi-request",
+      "name": "查询 Bangumi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, -100],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
+        "jsCode": "const loopItem = $('循环处理').item;\nconst bangumiRes = $input.first().json;\nconst anime = loopItem.json.originalData;\n\nlet titleChinese = null;\n\nif (bangumiRes?.data?.length) {\n  const results = bangumiRes.data;\n  const nativeTitle = anime?.title?.native;\n  const romajiTitle = anime?.title?.romaji;\n  const year = anime?.startDate?.year;\n  \n  // 策略1：精确匹配\n  const exactMatch = results.find(r => r.name === nativeTitle || r.name === romajiTitle);\n  if (exactMatch?.name_cn) {\n    titleChinese = exactMatch.name_cn;\n  } else if (year) {\n    // 策略2：年份匹配\n    const sameYear = results.filter(r => r.date?.startsWith(String(year)));\n    if (sameYear.length === 1 && sameYear[0].name_cn) {\n      titleChinese = sameYear[0].name_cn;\n    } else if (results[0]?.name_cn) {\n      titleChinese = results[0].name_cn;\n    }\n  } else if (results[0]?.name_cn) {\n    titleChinese = results[0].name_cn;\n  }\n}\n\nreturn [{ json: { ...loopItem.json, titleChinese } }];"
+      },
+      "id": "code-match",
+      "name": "匹配中文标题",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, -100]
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-node",
+      "name": "等待 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1540, -100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  if (data.empty) continue;\n  \n  const anime = data.originalData;\n  const titleChinese = data.titleChinese;\n  const totalScore = data.totalScore; // 已在预处理中计算\n  \n  let releaseDate = 'NULL';\n  if (anime.startDate?.year) {\n    releaseDate = `'${anime.startDate.year}-${String(anime.startDate.month || 1).padStart(2, '0')}-${String(anime.startDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  let endDate = 'NULL';\n  if (anime.endDate?.year) {\n    endDate = `'${anime.endDate.year}-${String(anime.endDate.month || 1).padStart(2, '0')}-${String(anime.endDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  const escapeStr = (s) => s ? `'${String(s).replace(/'/g, \"''\")}'` : 'NULL';\n  const tagsArray = anime.genres?.length ? `ARRAY[${anime.genres.map(g => escapeStr(g)).join(',')}]::TEXT[]` : 'ARRAY[]::TEXT[]';\n  const ipId = `anilist_${anime.id}`;\n  \n  results.push({\n    json: {\n      sql_id: escapeStr(ipId),\n      sql_type: \"'ANIME'\",\n      sql_titleOriginal: escapeStr(anime.title.native || anime.title.romaji),\n      sql_titleChinese: escapeStr(titleChinese),\n      sql_titleEnglish: escapeStr(anime.title.english || anime.title.romaji),\n      sql_description: escapeStr(anime.description?.replace(/<[^>]*>/g, '').substring(0, 1000)),\n      sql_coverImage: escapeStr(anime.coverImage?.large),\n      sql_tags: tagsArray,\n      sql_releaseDate: releaseDate,\n      sql_endDate: endDate,\n      sql_popularityScore: anime.popularity || 0,\n      sql_ratingScore: anime.averageScore || 0,\n      sql_totalScore: totalScore,\n      sql_metadata: escapeStr(JSON.stringify({ anilistId: anime.id, studios: anime.studios?.nodes?.map(s => s.name) || [] })),\n      sql_externalUrls: escapeStr(JSON.stringify({ anilist: `https://anilist.co/anime/${anime.id}` })),\n      _stats: { total: items.length, manualReview: items.length, autoRejected: items[0]?.json?._stats?.autoRejected || 0 }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, _stats: { total: 0, manualReview: 0, autoRejected: 0 } } }];\n}\n\nreturn results;"
+      },
+      "id": "code-process",
+      "name": "数据处理与评分",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 100]
+    },
+        {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO ip_reviews (id, type, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", status, \"createdAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  'PENDING',\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\";",
+        "query": "=INSERT INTO ip_reviews (id, type, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", status, \"createdAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  'PENDING',\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleChinese\" = EXCLUDED.\"titleChinese\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\";",
         "options": {}
       },
       "id": "postgres-reviews",
       "name": "写入 ip_reviews 表",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1100, 0],
-      "credentials": {
-        "postgres": {
-          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
-          "name": "MoeDesk PostgreSQL"
-        }
-      }
+      "position": [1540, 40],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
     },
-    {
-      "parameters": {},
-      "id": "noop-reject",
-      "name": "丢弃低热度",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [1100, 120]
-    },
-    {
+        {
       "parameters": {
-        "mode": "append"
-      },
-      "id": "merge-all",
-      "name": "合并分支",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
-      "position": [1320, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "const allItems = $input.all();\nconst stats = allItems[0]?.json?._stats || { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 };\n\nreturn [{\n  json: {\n    success: true,\n    message: '定时同步完成',\n    stats: stats,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const allItems = $input.all();\nconst stats = allItems[0]?.json?._stats || { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 };\n\nreturn [{ json: { success: true, message: '定时同步完成', stats, timestamp: new Date().toISOString() } }];"
       },
       "id": "code-stats",
       "name": "生成统计",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1540, 0]
+      "position": [1980, 100]
     }
   ],
   "connections": {
-    "每周一 09:00": {
-      "main": [[{ "node": "计算当前季度", "type": "main", "index": 0 }]]
-    },
-    "计算当前季度": {
-      "main": [[{ "node": "AniList GraphQL", "type": "main", "index": 0 }]]
-    },
-    "AniList GraphQL": {
-      "main": [[{ "node": "数据处理与评分", "type": "main", "index": 0 }]]
-    },
-    "数据处理与评分": {
-      "main": [[{ "node": "分流判断", "type": "main", "index": 0 }]]
-    },
-    "分流判断": {
+    "每周一 09:00": { "main": [[{ "node": "计算当前季度", "type": "main", "index": 0 }]] },
+    "计算当前季度": { "main": [[{ "node": "AniList GraphQL", "type": "main", "index": 0 }]] },
+    "AniList GraphQL": { "main": [[{ "node": "预处理", "type": "main", "index": 0 }]] },
+    "预处理": { "main": [[{ "node": "循环处理", "type": "main", "index": 0 }]] },
+    "循环处理": {
       "main": [
-        [{ "node": "写入 ips 表", "type": "main", "index": 0 }],
-        [{ "node": "写入 ip_reviews 表", "type": "main", "index": 0 }],
-        [{ "node": "丢弃低热度", "type": "main", "index": 0 }]
+        [{ "node": "数据处理与评分", "type": "main", "index": 0 }],
+        [{ "node": "查询 Bangumi", "type": "main", "index": 0 }]
       ]
     },
-    "写入 ips 表": {
-      "main": [[{ "node": "合并分支", "type": "main", "index": 0 }]]
-    },
-    "写入 ip_reviews 表": {
-      "main": [[{ "node": "合并分支", "type": "main", "index": 1 }]]
-    },
-    "丢弃低热度": {
-      "main": [[{ "node": "合并分支", "type": "main", "index": 2 }]]
-    },
-    "合并分支": {
-      "main": [[{ "node": "生成统计", "type": "main", "index": 0 }]]
-    }
+    "查询 Bangumi": { "main": [[{ "node": "匹配中文标题", "type": "main", "index": 0 }]] },
+    "匹配中文标题": { "main": [[{ "node": "等待 1s", "type": "main", "index": 0 }]] },
+    "等待 1s": { "main": [[{ "node": "循环处理", "type": "main", "index": 0 }]] },
+    "数据处理与评分": { "main": [[{ "node": "写入 ip_reviews 表", "type": "main", "index": 0 }]] },
+    "写入 ip_reviews 表": { "main": [[{ "node": "生成统计", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,
