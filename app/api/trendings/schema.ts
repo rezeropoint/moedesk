@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import { IpTypeSchema } from "../ips/schema"
+import { IpTypeSchema } from "../ip-reviews/schema"
 
 /** 热度状态枚举 */
 export const TrendingStatusSchema = z.enum([

@@ -28,7 +28,6 @@ export function TrendingItem({ item }: TrendingItemProps) {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   const isHot = item.rank <= 3
-  const title = item.ip.titleChinese || item.ip.titleOriginal
 
   const handleViewDetail = () => {
     setDetailDialogOpen(true)
@@ -72,7 +71,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
           {item.ip.coverImage ? (
             <Image
               src={item.ip.coverImage}
-              alt={title}
+              alt={item.ip.titleOriginal}
               fill
               className="object-cover"
               unoptimized
@@ -86,23 +85,30 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
         {/* 内容区 */}
         <div className="flex-1 min-w-0">
-          {/* 第一行：标题 + 类型 + 火热度 */}
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="font-semibold truncate cursor-pointer hover:text-primary"
-              onClick={handleViewDetail}
-            >
-              {title}
-            </span>
-            <IpTypeBadge type={item.ip.type} />
-            {item.heatLevel >= 1 && (
-              <span className="text-orange-500 shrink-0">
-                {"🔥".repeat(item.heatLevel)}
+          {/* 标题区域 */}
+          <div className="mb-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="font-semibold truncate cursor-pointer hover:text-primary"
+                onClick={handleViewDetail}
+              >
+                {item.ip.titleOriginal}
               </span>
+              <IpTypeBadge type={item.ip.type} />
+              {item.heatLevel >= 1 && (
+                <span className="text-orange-500 shrink-0">
+                  {"🔥".repeat(item.heatLevel)}
+                </span>
+              )}
+            </div>
+            {item.ip.titleChinese && (
+              <div className="text-sm text-muted-foreground truncate">
+                {item.ip.titleChinese}
+              </div>
             )}
           </div>
 
-          {/* 第二行：AniList 评分 + 社媒热度 */}
+          {/* AniList 评分 + 社媒热度 */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="text-blue-600">AniList</span>
             <span>综合 <strong className="text-foreground">{item.ip.totalScore}</strong></span>
@@ -133,12 +139,23 @@ export function TrendingItem({ item }: TrendingItemProps) {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {title}
+              <span className="truncate">{item.ip.titleOriginal}</span>
               <IpTypeBadge type={item.ip.type} />
             </DialogTitle>
-            {item.ip.titleEnglish && (
-              <DialogDescription>{item.ip.titleEnglish}</DialogDescription>
-            )}
+            <DialogDescription className="space-y-1">
+              {item.ip.titleChinese && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">中文:</span>
+                  <span className="text-foreground">{item.ip.titleChinese}</span>
+                </div>
+              )}
+              {item.ip.titleEnglish && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">英文:</span>
+                  <span>{item.ip.titleEnglish}</span>
+                </div>
+              )}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-[120px_1fr] gap-4">
@@ -147,7 +164,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
               {item.ip.coverImage ? (
                 <Image
                   src={item.ip.coverImage}
-                  alt={title}
+                  alt={item.ip.titleOriginal}
                   fill
                   className="object-cover"
                   unoptimized

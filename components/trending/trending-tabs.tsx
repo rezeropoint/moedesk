@@ -4,7 +4,7 @@
  * 热点雷达 Tab 切换组件
  */
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { TrendingList } from "./trending-list"
@@ -43,6 +43,11 @@ export function TrendingTabs({
   const [activeTab, setActiveTab] = useState<"trending" | "review">("trending")
   const [trendingItems, setTrendingItems] = useState(initialTrendings)
   const [isPending, startTransition] = useTransition()
+
+  // 同步服务端数据到客户端状态
+  useEffect(() => {
+    setTrendingItems(initialTrendings)
+  }, [initialTrendings])
 
   const handleRefresh = () => {
     startTransition(async () => {

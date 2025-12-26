@@ -9,7 +9,7 @@ import type { TrendingStatsItemType } from "@/app/api/trendings/schema"
 export async function getTrendingStats(): Promise<TrendingStatsItemType> {
   const [totalIps, totalTrendings, pendingReviews, statusCounts] =
     await Promise.all([
-      db.ip.count(),
+      db.ipReview.count({ where: { status: "APPROVED" } }),
       db.trending.count(),
       db.ipReview.count({ where: { status: "PENDING" } }),
       db.trending.groupBy({

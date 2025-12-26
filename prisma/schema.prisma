@@ -57,13 +57,6 @@ enum IpType {
   OTHER        // 其他
 }
 
-/// IP 来源枚举
-enum IpSource {
-  AUTO             // 自动入库（高热度）
-  MANUAL_APPROVED  // 人工审核通过
-  MANUAL_ADDED     // 手动添加
-}
-
 /// 审核状态枚举
 enum ReviewStatus {
   PENDING   // 待审核
@@ -79,54 +72,7 @@ enum TrendingStatus {
   ARCHIVED     // 已归档
 }
 
-/// IP 表 - 正式入库的 IP 数据
-model Ip {
-  id            String    @id                      // 外部平台 ID（如 AniList media id）
-  type          IpType                             // IP 类型
-  source        IpSource  @default(AUTO)           // 入库来源
-
-  // 基础信息（所有类型通用）
-  titleOriginal String                             // 原始标题
-  titleChinese  String?                            // 中文标题
-  titleEnglish  String?                            // 英文标题
-  description   String?                            // 简介
-  coverImage    String?                            // 封面图 URL
-  tags          String[]                           // 标签/类型（如 ["动作", "奇幻"]）
-
-  // 时间相关（通用）
-  releaseDate   DateTime?                          // 发布/开播日期
-  endDate       DateTime?                          // 完结日期（番剧/游戏运营结束）
-
-  // 热度数据（定时更新）
-  popularityScore  Int?                            // 平台热度值
-  ratingScore      Int?                            // 平台评分（0-100）
-  totalScore       Int      @default(0)            // n8n 计算的综合分
-
-  // 类型特定字段（JSON 存储，按 type 解析）
-  // Anime: { season, seasonYear, episodes, studios, anilistId }
-  // Game: { platforms, developer, publisher, steamId }
-  // Manga: { chapters, author, serialization }
-  // Vtuber: { agency, youtubeChannel, subscribers }
-  metadata      Json?
-
-  // 外部链接
-  externalUrls  Json?                              // { anilist, mal, steam, vndb, ... }
-
-  // 元数据
-  syncedAt      DateTime  @default(now())          // 最后同步时间
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // 关联
-  trendings     Trending[]
-
-  @@index([type])
-  @@index([totalScore])
-  @@index([releaseDate])
-  @@map("ips")
-}
-
-/// IP 待审核表 - 灰色地带数据，需人工决策
+/// IP 表 - 所有 IP 数据（通过 status 控制审核状态）
 model IpReview {
   id            String    @id                      // 外部平台 ID
   type          IpType
@@ -157,6 +103,9 @@ model IpReview {
 
   createdAt     DateTime  @default(now())
 
+  // 关联
+  trendings     Trending[]
+
   @@index([status])
   @@index([type])
   @@index([totalScore])
@@ -169,7 +118,7 @@ model Trending {
 
   // 关联 IP
   ipId            String
-  ip              Ip       @relation(fields: [ipId], references: [id], onDelete: Cascade)
+  ip              IpReview @relation(fields: [ipId], references: [id], onDelete: Cascade)
 
   // 多源热度数据（定时更新）
   redditKarma     Int?                             // Reddit karma（番剧）

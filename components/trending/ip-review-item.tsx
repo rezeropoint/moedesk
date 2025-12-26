@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IpTypeBadge } from "./ip-type-badge"
-import { Check, X, Loader2 } from "lucide-react"
+import { Check, X, Loader2, Pencil } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import type { IpType, ReviewStatus } from "@/types/trending"
@@ -57,8 +57,10 @@ export function IpReviewItem({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [rejectNote, setRejectNote] = useState("")
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(item.titleChinese ?? "")
+  const [isSaving, startSave] = useTransition()
 
-  const title = item.titleChinese || item.titleOriginal
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "-"
@@ -93,6 +95,27 @@ export function IpReviewItem({
     })
   }
 
+  const handleSaveTitle = () => {
+    if (!editValue.trim()) return
+
+    startSave(async () => {
+      const response = await fetch(`/api/ip-reviews/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titleChinese: editValue.trim() }),
+      })
+      if (response.ok) {
+        setIsEditing(false)
+        router.refresh()
+      }
+    })
+  }
+
+  const handleCancelEdit = () => {
+    setEditValue(item.titleChinese ?? "")
+    setIsEditing(false)
+  }
+
   return (
     <>
       <div className="flex items-start gap-4 p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors">
@@ -101,7 +124,7 @@ export function IpReviewItem({
           {item.coverImage ? (
             <Image
               src={item.coverImage}
-              alt={title}
+              alt={item.titleOriginal}
               fill
               className="object-cover"
               unoptimized
@@ -115,14 +138,22 @@ export function IpReviewItem({
 
         {/* 内容 */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="font-semibold truncate cursor-pointer hover:text-primary"
-              onClick={() => setDetailDialogOpen(true)}
-            >
-              {title}
-            </span>
-            <IpTypeBadge type={item.type} />
+          {/* 标题区域 */}
+          <div className="mb-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="font-semibold truncate cursor-pointer hover:text-primary"
+                onClick={() => setDetailDialogOpen(true)}
+              >
+                {item.titleOriginal}
+              </span>
+              <IpTypeBadge type={item.type} />
+            </div>
+            {item.titleChinese && (
+              <div className="text-sm text-muted-foreground truncate">
+                {item.titleChinese}
+              </div>
+            )}
           </div>
           {/* 评分信息 */}
           <div className="flex items-center gap-3 text-sm mb-1">
@@ -161,6 +192,14 @@ export function IpReviewItem({
         {/* 操作按钮 */}
         <div className="flex items-center gap-2 shrink-0">
           <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDetailDialogOpen(true)}
+          >
+            <Pencil className="h-4 w-4 mr-1" />
+            修改
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={() => setRejectDialogOpen(true)}
@@ -189,16 +228,87 @@ export function IpReviewItem({
       </div>
 
       {/* 详情弹窗 */}
-      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+      <Dialog
+        open={detailDialogOpen}
+        onOpenChange={(open) => {
+          setDetailDialogOpen(open)
+          if (!open) {
+            setIsEditing(false)
+            setEditValue(item.titleChinese ?? "")
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {title}
+              <span className="truncate">{item.titleOriginal}</span>
               <IpTypeBadge type={item.type} />
             </DialogTitle>
-            {item.titleEnglish && (
-              <DialogDescription>{item.titleEnglish}</DialogDescription>
-            )}
+            <DialogDescription className="space-y-1">
+              {/* 中文标题（可编辑） */}
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground shrink-0">中文:</span>
+                {isEditing ? (
+                  <div className="flex items-center gap-1 flex-1">
+                    <Input
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      placeholder="输入中文标题"
+                      className="h-7 text-sm"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle()
+                        if (e.key === "Escape") handleCancelEdit()
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={handleSaveTitle}
+                      disabled={!editValue.trim() || isSaving}
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <span className={item.titleChinese ? "text-foreground" : "text-muted-foreground italic"}>
+                      {item.titleChinese || "未设置"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-5 w-5 p-0"
+                      onClick={() => setIsEditing(true)}
+                      title="编辑中文标题"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {/* 英文标题 */}
+              {item.titleEnglish && (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">英文:</span>
+                  <span>{item.titleEnglish}</span>
+                </div>
+              )}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-[120px_1fr] gap-4">
@@ -207,7 +317,7 @@ export function IpReviewItem({
               {item.coverImage ? (
                 <Image
                   src={item.coverImage}
-                  alt={title}
+                  alt={item.titleOriginal}
                   fill
                   className="object-cover"
                   unoptimized

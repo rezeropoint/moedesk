@@ -14,9 +14,6 @@ export type IpType =
   | "MOVIE"
   | "OTHER"
 
-/** IP 来源 */
-export type IpSource = "AUTO" | "MANUAL_APPROVED" | "MANUAL_ADDED"
-
 /** 审核状态 */
 export type ReviewStatus = "PENDING" | "APPROVED" | "REJECTED"
 
@@ -44,15 +41,7 @@ export interface IpBase {
   externalUrls: Record<string, string> | null
 }
 
-/** 已入库 IP */
-export interface Ip extends IpBase {
-  source: IpSource
-  syncedAt: string
-  createdAt: string
-  updatedAt: string
-}
-
-/** 待审核 IP */
+/** IP 数据 */
 export interface IpReview extends IpBase {
   status: ReviewStatus
   reviewedBy: string | null
@@ -65,7 +54,7 @@ export interface IpReview extends IpBase {
 export interface Trending {
   id: string
   ipId: string
-  ip: Ip
+  ip: IpReview
   redditKarma: number | null
   googleTrend: number | null
   twitterMentions: number | null

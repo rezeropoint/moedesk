@@ -3,7 +3,17 @@
  */
 
 import { z } from "zod"
-import { IpTypeSchema } from "../ips/schema"
+
+/** IP 类型枚举 */
+export const IpTypeSchema = z.enum([
+  "ANIME",
+  "GAME",
+  "MANGA",
+  "LIGHT_NOVEL",
+  "VTUBER",
+  "MOVIE",
+  "OTHER",
+])
 
 /** 审核状态枚举 */
 export const ReviewStatusSchema = z.enum(["PENDING", "APPROVED", "REJECTED"])
@@ -47,8 +57,14 @@ export const RejectReq = z.object({
   reviewNote: z.string().min(1, "请填写拒绝原因"),
 })
 
+/** 更新 IP 审核记录请求 */
+export const UpdateReq = z.object({
+  titleChinese: z.string().min(1, "中文标题不能为空").max(200, "标题过长"),
+})
+
 // 导出类型
 export type IpReviewListReqType = z.infer<typeof IpReviewListReq>
 export type IpReviewItemType = z.infer<typeof IpReviewItem>
 export type ApproveReqType = z.infer<typeof ApproveReq>
 export type RejectReqType = z.infer<typeof RejectReq>
+export type UpdateReqType = z.infer<typeof UpdateReq>

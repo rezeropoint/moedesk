@@ -65,10 +65,11 @@ export default async function TrendingPage() {
         createdAt: true,
       },
     }),
-    // 获取即将完结番（endDate 在未来30天内）
-    db.ip.findMany({
+    // 获取即将完结番（endDate 在未来30天内，且已通过审核）
+    db.ipReview.findMany({
       where: {
         type: "ANIME",
+        status: "APPROVED",
         endDate: {
           gte: now,
           lte: thirtyDaysLater,

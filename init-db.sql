@@ -25,12 +25,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- CreateEnum: IpSource
-DO $$ BEGIN
-  CREATE TYPE "IpSource" AS ENUM ('AUTO', 'MANUAL_APPROVED', 'MANUAL_ADDED');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
 -- CreateEnum: ReviewStatus
 DO $$ BEGIN
   CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
@@ -75,31 +69,7 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 -- IP 相关表（泛宅文化：番剧、游戏、漫画等）
 -- ============================================
 
--- CreateTable: ips (正式入库的 IP 数据)
-CREATE TABLE IF NOT EXISTS "ips" (
-    "id" TEXT NOT NULL,
-    "type" "IpType" NOT NULL,
-    "source" "IpSource" NOT NULL DEFAULT 'AUTO',
-    "titleOriginal" TEXT NOT NULL,
-    "titleChinese" TEXT,
-    "titleEnglish" TEXT,
-    "description" TEXT,
-    "coverImage" TEXT,
-    "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
-    "releaseDate" TIMESTAMP(3),
-    "endDate" TIMESTAMP(3),
-    "popularityScore" INTEGER,
-    "ratingScore" INTEGER,
-    "totalScore" INTEGER NOT NULL DEFAULT 0,
-    "metadata" JSONB,
-    "externalUrls" JSONB,
-    "syncedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "ips_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable: ip_reviews (待审核的 IP 数据)
+-- CreateTable: ip_reviews (所有 IP 数据，通过 status 控制审核状态)
 CREATE TABLE IF NOT EXISTS "ip_reviews" (
     "id" TEXT NOT NULL,
     "type" "IpType" NOT NULL,
@@ -151,11 +121,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
 -- sessions 索引
 CREATE INDEX IF NOT EXISTS "sessions_userId_idx" ON "sessions"("userId");
 
--- ips 索引
-CREATE INDEX IF NOT EXISTS "ips_type_idx" ON "ips"("type");
-CREATE INDEX IF NOT EXISTS "ips_totalScore_idx" ON "ips"("totalScore");
-CREATE INDEX IF NOT EXISTS "ips_releaseDate_idx" ON "ips"("releaseDate");
-
 -- ip_reviews 索引
 CREATE INDEX IF NOT EXISTS "ip_reviews_status_idx" ON "ip_reviews"("status");
 CREATE INDEX IF NOT EXISTS "ip_reviews_type_idx" ON "ip_reviews"("type");
@@ -177,10 +142,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- trendings -> ips
+-- trendings -> ip_reviews
 DO $$ BEGIN
   ALTER TABLE "trendings" ADD CONSTRAINT "trendings_ipId_fkey"
-    FOREIGN KEY ("ipId") REFERENCES "ips"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    FOREIGN KEY ("ipId") REFERENCES "ip_reviews"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

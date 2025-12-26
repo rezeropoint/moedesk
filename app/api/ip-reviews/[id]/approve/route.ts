@@ -57,28 +57,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         },
       })
 
-      // 创建正式 IP 记录
-      await tx.ip.create({
-        data: {
-          id: review.id,
-          type: review.type,
-          source: "MANUAL_APPROVED",
-          titleOriginal: review.titleOriginal,
-          titleChinese: review.titleChinese,
-          titleEnglish: review.titleEnglish,
-          description: review.description,
-          coverImage: review.coverImage,
-          tags: review.tags,
-          releaseDate: review.releaseDate,
-          endDate: review.endDate,
-          popularityScore: review.popularityScore,
-          ratingScore: review.ratingScore,
-          totalScore: review.totalScore,
-          metadata: review.metadata || undefined,
-          externalUrls: review.externalUrls || undefined,
-        },
-      })
-
       // 创建热度追踪记录
       await tx.trending.create({
         data: {
