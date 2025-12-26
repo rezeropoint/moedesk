@@ -15,8 +15,12 @@ import type { TrendingListItem, IpType, TrendingStatus } from "@/types/trending"
 export const dynamic = "force-dynamic"
 
 export default async function TrendingPage() {
+  // 计算30天后的日期
+  const now = new Date()
+  const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+
   // 并行获取数据
-  const [stats, trendings, pendingReviews, animeSchedule] = await Promise.all([
+  const [stats, trendings, pendingReviews, endingSoonAnime] = await Promise.all([
     getTrendingStats(),
     db.trending.findMany({
       take: 20,
@@ -61,18 +65,23 @@ export default async function TrendingPage() {
         createdAt: true,
       },
     }),
+    // 获取即将完结番（endDate 在未来30天内）
     db.ip.findMany({
       where: {
         type: "ANIME",
+        endDate: {
+          gte: now,
+          lte: thirtyDaysLater,
+        },
       },
       take: 5,
-      orderBy: { releaseDate: "desc" },
+      orderBy: { endDate: "asc" },
       select: {
         id: true,
         titleOriginal: true,
         titleChinese: true,
         coverImage: true,
-        metadata: true,
+        endDate: true,
       },
     }),
   ])
@@ -143,18 +152,21 @@ export default async function TrendingPage() {
     createdAt: item.createdAt.toISOString(),
   }))
 
-  // 转换新番数据
-  const animeScheduleItems = animeSchedule.map((anime) => ({
-    id: anime.id,
-    titleOriginal: anime.titleOriginal,
-    titleChinese: anime.titleChinese,
-    coverImage: anime.coverImage,
-    metadata: anime.metadata as {
-      seasonYear?: number
-      season?: string
-      episodes?: number
-    } | null,
-  }))
+  // 转换即将完结番数据
+  const endingSoonItems = endingSoonAnime.map((anime) => {
+    const endDate = anime.endDate as Date
+    const daysRemaining = Math.ceil(
+      (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    return {
+      id: anime.id,
+      titleOriginal: anime.titleOriginal,
+      titleChinese: anime.titleChinese,
+      coverImage: anime.coverImage,
+      endDate: endDate.toISOString(),
+      daysRemaining,
+    }
+  })
 
   return (
     <div className="p-8 space-y-6">
@@ -197,7 +209,7 @@ export default async function TrendingPage() {
         />
 
         {/* 右侧：侧边面板 */}
-        <TrendingSidePanel animeSchedule={animeScheduleItems} />
+        <TrendingSidePanel endingSoonItems={endingSoonItems} />
       </div>
     </div>
   )

@@ -2,30 +2,29 @@
  * 热点雷达右侧面板容器
  */
 
-import { AnimeSchedule } from "./anime-schedule"
+import { HeatSurgePanel } from "./heat-surge-panel"
+import { EndingSoonPanel } from "./ending-soon-panel"
 import { ProductMatchPanel } from "./product-match-panel"
 import { MonitorSettingsPanel } from "./monitor-settings-panel"
 
-interface AnimeItem {
+interface EndingSoonItem {
   id: string
   titleOriginal: string
   titleChinese: string | null
   coverImage: string | null
-  metadata: {
-    seasonYear?: number
-    season?: string
-    episodes?: number
-  } | null
+  endDate: string
+  daysRemaining: number
 }
 
 interface TrendingSidePanelProps {
-  animeSchedule: AnimeItem[]
+  endingSoonItems: EndingSoonItem[]
 }
 
-export function TrendingSidePanel({ animeSchedule }: TrendingSidePanelProps) {
+export function TrendingSidePanel({ endingSoonItems }: TrendingSidePanelProps) {
   return (
     <div className="space-y-5">
-      <AnimeSchedule items={animeSchedule} />
+      <HeatSurgePanel />
+      <EndingSoonPanel items={endingSoonItems} />
       <ProductMatchPanel />
       <MonitorSettingsPanel />
     </div>

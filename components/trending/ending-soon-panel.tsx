@@ -1,61 +1,56 @@
 /**
- * 本周新番面板
+ * 即将完结番面板
  */
 
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { CalendarClock } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-interface AnimeItem {
+interface EndingSoonItem {
   id: string
   titleOriginal: string
   titleChinese: string | null
   coverImage: string | null
-  metadata: {
-    seasonYear?: number
-    season?: string
-    episodes?: number
-  } | null
+  endDate: string
+  daysRemaining: number
 }
 
-interface AnimeScheduleProps {
-  items: AnimeItem[]
+interface EndingSoonPanelProps {
+  items: EndingSoonItem[]
 }
 
-export function AnimeSchedule({ items }: AnimeScheduleProps) {
+export function EndingSoonPanel({ items }: EndingSoonPanelProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Calendar className="h-4 w-4" />
-          本周新番
+          <CalendarClock className="h-4 w-4" />
+          即将完结
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            暂无本周新番数据
-          </p>
+          <div className="text-center py-6 text-muted-foreground">
+            <CalendarClock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">暂无即将完结的番剧</p>
+          </div>
         ) : (
-          items.map((anime) => {
-            const metadata = anime.metadata as {
-              seasonYear?: number
-              season?: string
-              episodes?: number
-            } | null
+          items.map((item) => {
+            const title = item.titleChinese || item.titleOriginal
 
             return (
               <div
-                key={anime.id}
+                key={item.id}
                 className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
               >
                 {/* 封面 */}
                 <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden shrink-0 relative">
-                  {anime.coverImage ? (
+                  {item.coverImage ? (
                     <Image
-                      src={anime.coverImage}
-                      alt={anime.titleChinese || anime.titleOriginal}
+                      src={item.coverImage}
+                      alt={title}
                       fill
                       className="object-cover"
                       unoptimized
@@ -69,17 +64,24 @@ export function AnimeSchedule({ items }: AnimeScheduleProps) {
 
                 {/* 信息 */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">
-                    {anime.titleChinese || anime.titleOriginal}
-                  </p>
+                  <p className="font-medium text-sm truncate">{title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {metadata?.seasonYear} {metadata?.season}
+                    {new Date(item.endDate).toLocaleDateString("zh-CN")} 完结
                   </p>
                 </div>
 
-                {/* 集数 */}
-                <Badge variant="secondary" className="shrink-0">
-                  EP {metadata?.episodes || "?"}
+                {/* 剩余天数 */}
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "shrink-0",
+                    item.daysRemaining <= 7 && "bg-destructive/10 text-destructive",
+                    item.daysRemaining > 7 &&
+                      item.daysRemaining <= 14 &&
+                      "bg-orange-100 text-orange-700"
+                  )}
+                >
+                  {item.daysRemaining <= 0 ? "已完结" : `${item.daysRemaining}天`}
                 </Badge>
               </div>
             )

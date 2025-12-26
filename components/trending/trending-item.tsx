@@ -102,8 +102,9 @@ export function TrendingItem({ item }: TrendingItemProps) {
             )}
           </div>
 
-          {/* 第二行：评分 + 社媒热度 */}
+          {/* 第二行：AniList 评分 + 社媒热度 */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span className="text-blue-600">AniList</span>
             <span>综合 <strong className="text-foreground">{item.ip.totalScore}</strong></span>
             <span>热度 <strong className="text-foreground">{item.ip.popularityScore ?? "-"}</strong></span>
             <span>评分 <strong className="text-foreground">{item.ip.ratingScore ?? "-"}</strong></span>
@@ -160,25 +161,30 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
             {/* 信息 */}
             <div className="space-y-3">
-              {/* 评分详情 */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    {item.ip.totalScore}
-                  </div>
-                  <div className="text-xs text-muted-foreground">综合分</div>
+              {/* AniList 评分详情 */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-blue-600">AniList 数据</span>
                 </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold">
-                    {item.ip.popularityScore ?? "-"}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-muted rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {item.ip.totalScore}
+                    </div>
+                    <div className="text-xs text-muted-foreground">综合分</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">热度分</div>
-                </div>
-                <div className="bg-muted rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold">
-                    {item.ip.ratingScore ?? "-"}
+                  <div className="bg-muted rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">
+                      {item.ip.popularityScore ?? "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">热度分</div>
                   </div>
-                  <div className="text-xs text-muted-foreground">评分</div>
+                  <div className="bg-muted rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold">
+                      {item.ip.ratingScore ?? "-"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">评分</div>
+                  </div>
                 </div>
               </div>
 
@@ -205,9 +211,9 @@ export function TrendingItem({ item }: TrendingItemProps) {
             </div>
           </div>
 
-          {/* 热度数据 */}
+          {/* 社媒热度数据 */}
           <div className="mt-4 pt-4 border-t">
-            <h4 className="text-sm font-medium mb-3">热度数据</h4>
+            <h4 className="text-sm font-medium mb-3">社媒热度</h4>
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-orange-50 rounded-lg p-3 text-center">
                 <div className="text-lg font-bold text-orange-600">
