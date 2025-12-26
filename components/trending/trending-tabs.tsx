@@ -4,10 +4,12 @@
  * 热点雷达 Tab 切换组件
  */
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { TrendingList } from "./trending-list"
 import { IpReviewList } from "./ip-review-list"
+import { RefreshCw } from "lucide-react"
 import type { TrendingListItem, IpType, ReviewStatus } from "@/types/trending"
 
 interface IpReviewListItem {
@@ -39,28 +41,56 @@ export function TrendingTabs({
   pendingCount,
 }: TrendingTabsProps) {
   const [activeTab, setActiveTab] = useState<"trending" | "review">("trending")
+  const [trendingItems, setTrendingItems] = useState(initialTrendings)
+  const [isPending, startTransition] = useTransition()
+
+  const handleRefresh = () => {
+    startTransition(async () => {
+      const response = await fetch("/api/trendings")
+      if (response.ok) {
+        const result = await response.json()
+        setTrendingItems(result.data.items)
+      }
+    })
+  }
 
   return (
     <Tabs
       value={activeTab}
       onValueChange={(v) => setActiveTab(v as "trending" | "review")}
     >
-      <TabsList className="mb-4">
-        <TabsTrigger value="trending">
-          实时热点 ({initialTrendings.length})
-        </TabsTrigger>
-        <TabsTrigger value="review" className="relative">
-          待审核
-          {pendingCount > 0 && (
-            <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-              {pendingCount}
-            </span>
-          )}
-        </TabsTrigger>
-      </TabsList>
+      <div className="flex items-center justify-between mb-4">
+        <TabsList>
+          <TabsTrigger value="trending">
+            实时热点 ({trendingItems.length})
+          </TabsTrigger>
+          <TabsTrigger value="review" className="relative">
+            待审核
+            {pendingCount > 0 && (
+              <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        {activeTab === "trending" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isPending}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isPending ? "animate-spin" : ""}`}
+            />
+            刷新
+          </Button>
+        )}
+      </div>
 
       <TabsContent value="trending" className="m-0">
-        <TrendingList initialData={initialTrendings} />
+        <TrendingList data={trendingItems} />
       </TabsContent>
 
       <TabsContent value="review" className="m-0">

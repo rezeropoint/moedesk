@@ -45,8 +45,13 @@ export async function GET(request: NextRequest) {
             type: true,
             titleOriginal: true,
             titleChinese: true,
+            titleEnglish: true,
+            description: true,
             coverImage: true,
             tags: true,
+            releaseDate: true,
+            popularityScore: true,
+            ratingScore: true,
             totalScore: true,
           },
         },
@@ -80,6 +85,12 @@ export async function GET(request: NextRequest) {
         discussionCount,
         lastUpdated: t.updatedAt.toISOString(),
         status: t.status,
+        heatData: {
+          redditKarma: t.redditKarma,
+          googleTrend: t.googleTrend,
+          twitterMentions: t.twitterMentions,
+          biliDanmaku: t.biliDanmaku,
+        },
       }
     })
 

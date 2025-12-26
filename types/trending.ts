@@ -97,6 +97,14 @@ export interface TrendingStats {
 
 // ============== 列表项类型（带计算字段） ==============
 
+/** 热度数据 */
+export interface HeatData {
+  redditKarma: number | null
+  googleTrend: number | null
+  twitterMentions: number | null
+  biliDanmaku: number | null
+}
+
 /** 热点列表项（热度排行） */
 export interface TrendingListItem {
   id: string
@@ -106,8 +114,14 @@ export interface TrendingListItem {
     type: IpType
     titleOriginal: string
     titleChinese: string | null
+    titleEnglish: string | null
+    description: string | null
     coverImage: string | null
     tags: string[]
+    releaseDate: string | null
+    popularityScore: number | null
+    ratingScore: number | null
+    totalScore: number
   }
   totalScore: number
   growthRate: number
@@ -117,6 +131,7 @@ export interface TrendingListItem {
   discussionCount: number
   lastUpdated: string
   status: TrendingStatus
+  heatData: HeatData
 }
 
 /** 待审核列表项 */

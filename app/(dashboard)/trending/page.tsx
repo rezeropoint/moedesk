@@ -28,8 +28,13 @@ export default async function TrendingPage() {
             type: true,
             titleOriginal: true,
             titleChinese: true,
+            titleEnglish: true,
+            description: true,
             coverImage: true,
             tags: true,
+            releaseDate: true,
+            popularityScore: true,
+            ratingScore: true,
             totalScore: true,
           },
         },
@@ -94,8 +99,14 @@ export default async function TrendingPage() {
         type: t.ip.type as IpType,
         titleOriginal: t.ip.titleOriginal,
         titleChinese: t.ip.titleChinese,
+        titleEnglish: t.ip.titleEnglish,
+        description: t.ip.description,
         coverImage: t.ip.coverImage,
         tags: t.ip.tags,
+        releaseDate: t.ip.releaseDate?.toISOString() ?? null,
+        popularityScore: t.ip.popularityScore,
+        ratingScore: t.ip.ratingScore,
+        totalScore: t.ip.totalScore,
       },
       totalScore: t.ip.totalScore,
       growthRate: Math.floor((t.ip.totalScore % 300) + 50), // 基于分数计算增长率
@@ -105,6 +116,12 @@ export default async function TrendingPage() {
       discussionCount,
       lastUpdated: t.updatedAt.toISOString(),
       status: t.status as TrendingStatus,
+      heatData: {
+        redditKarma: t.redditKarma,
+        googleTrend: t.googleTrend,
+        twitterMentions: t.twitterMentions,
+        biliDanmaku: t.biliDanmaku,
+      },
     }
   })
 
