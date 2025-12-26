@@ -147,32 +147,61 @@ const copy = structuredClone(obj) // 非 JSON.parse(JSON.stringify())
 const db = require("./db")        // CommonJS
 ```
 
+## 项目结构
+
+```
+app/                    # Next.js App Router
+├── (dashboard)/        # 认证后的仪表盘路由组
+│   ├── inbox/          # 消息收件箱
+│   ├── review/         # 内容审核
+│   ├── content/        # 内容排期
+│   ├── trending/       # 热点雷达
+│   ├── workflows/      # 工作流配置
+│   └── admin/users/    # 用户管理
+├── api/                # Route Handlers
+└── login/              # 登录页
+components/
+├── ui/                 # shadcn/ui 组件
+├── layout/             # 布局组件（Sidebar、UserNav）
+├── auth/               # 认证相关组件
+├── users/              # 用户管理组件
+├── workflows/          # 工作流组件
+└── trending/           # 热点雷达组件
+lib/
+├── auth/               # 认证逻辑（JWT、Session、密码）
+├── validations/        # Zod Schema
+├── generated/prisma/   # Prisma 生成的客户端
+├── db.ts               # 数据库单例
+└── n8n.ts              # n8n API 封装
+types/                  # TypeScript 类型定义
+prisma/                 # Prisma Schema 和种子数据
+```
+
 ## 数据模型
 
-三个核心表：
-- **Message** - 社媒消息（platform, content, classification, suggestedReply, status）
-- **Content** - 内容排期（title, platform, content, status, scheduledAt）
-- **Trending** - 热点追踪（source, title, score, relevance, relatedProducts）
+五个核心表（见 `prisma/schema.prisma`）：
+- **User/Session** - 用户认证（JWT + 数据库会话）
+- **Ip** - 正式入库的 IP 数据（番剧、游戏、漫画等）
+- **IpReview** - 待审核 IP（灰色地带数据）
+- **Trending** - 热度追踪（多源热度 + AI 评估）
+
+关键枚举：`IpType`（ANIME/GAME/MANGA...）、`ReviewStatus`、`TrendingStatus`
 
 ## n8n 集成
 
-```typescript
-// lib/n8n.ts
-export const N8N_WORKFLOWS = {
-  GENERATE_CONTENT: 'generate-content',
-  SEND_REPLY: 'send-reply',
-  REFRESH_TRENDING: 'refresh-trending',
-  PUBLISH_CONTENT: 'publish-content',
-}
-```
+`lib/n8n.ts` 包含：
+- `SOP_WORKFLOW_DEFINITIONS` - 所有 SOP 工作流静态定义（4 阶段 20+ 工作流）
+- `PHASE_CONFIG` - 阶段配置（内容生产/内容分发/用户互动/转化闭环）
+- `getWorkflowRuntimeStates()` - 获取工作流运行时状态
+- `triggerWorkflow()` - 触发 Webhook 工作流
 
 ## Docker 服务
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| app | 3000 | Next.js 前端 |
-| n8n | 5678 | 工作流引擎（中文版） |
-| db | 15432 | PostgreSQL 数据库 |
+| 服务 | 端口映射 | 说明 |
+|------|----------|------|
+| app | 3443:3000 | Next.js 前端 |
+| n8n | 5678:5678 | 工作流引擎（中文版） |
+| db | 15432:5432 | PostgreSQL 数据库 |
 
 ## 环境变量
 
