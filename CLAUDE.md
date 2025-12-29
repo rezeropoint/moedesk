@@ -152,21 +152,25 @@ const db = require("./db")        // CommonJS
 ```
 app/                    # Next.js App Router
 ├── (dashboard)/        # 认证后的仪表盘路由组
-│   ├── inbox/          # 消息收件箱
+│   ├── inbox/          # 消息收件箱（待开发）
 │   ├── review/         # 内容审核
-│   ├── content/        # 内容排期
+│   ├── content/        # 内容排期（待开发）
 │   ├── trending/       # 热点雷达
+│   │   └── analytics/  # 热度分析（Recharts 图表）
 │   ├── workflows/      # 工作流配置
 │   └── admin/users/    # 用户管理
 ├── api/                # Route Handlers
+│   ├── trendings/      # 热度 API
+│   │   ├── analytics/  # 分析 API（history/compare/sources）
+│   │   └── search/     # IP 搜索 API
+│   └── workflows/      # 工作流 API（含 toggle）
 └── login/              # 登录页
 components/
 ├── ui/                 # shadcn/ui 组件
 ├── layout/             # 布局组件（Sidebar、UserNav）
-├── auth/               # 认证相关组件
-├── users/              # 用户管理组件
-├── workflows/          # 工作流组件
-└── trending/           # 热点雷达组件
+├── trending/           # 热点雷达组件
+│   └── analytics/      # 分析图表组件
+└── workflows/          # 工作流组件
 lib/
 ├── auth/               # 认证逻辑（JWT、Session、密码）
 ├── validations/        # Zod Schema
@@ -196,6 +200,18 @@ prisma/                 # Prisma Schema 和种子数据
 - `PHASE_CONFIG` - 阶段配置（内容生产/内容分发/用户互动/转化闭环）
 - `getWorkflowRuntimeStates()` - 获取工作流运行时状态
 - `triggerWorkflow()` - 触发 Webhook 工作流
+- `toggleN8NWorkflow()` - 激活/停用工作流
+
+**实际部署的工作流：**
+
+| 文件 | 触发方式 | 功能 |
+|------|---------|------|
+| `sop-01-anilist-sync.json` | 每周一 09:00 | AniList 新番同步 → entries |
+| `sop-02-popularity-refresh.json` | 每天 03:00 | 热度全量刷新 |
+| `sop-02-google-trends.json` | 每天 04:00 | Google Trends 采集 |
+| `sop-02-reddit-monitor.json` | 每天 05:00 | Reddit Karma 采集 |
+
+**审核流程：** n8n 同步 → entries (PENDING) → 人工审核 → 通过后创建 Series + Trending → 实时热点显示
 
 ## Docker 服务
 
@@ -211,6 +227,8 @@ prisma/                 # Prisma Schema 和种子数据
 # 本地开发
 DATABASE_URL="file:./dev.db"
 N8N_WEBHOOK_URL="http://localhost:5678"
+N8N_API_KEY=""                              # n8n API Key（工作流控制必需）
+NEXT_PUBLIC_N8N_URL="http://localhost:5678" # 客户端可访问的 n8n 地址
 
 # Docker 环境
 DATABASE_URL="postgresql://postgres:postgres@db:5432/moedesk"
