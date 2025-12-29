@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
-            // 获取该系列得分最高的 Entry 的 AniList 数据
+            // 获取该系列得分最高的 Entry 的 AniList 数据和日期
             entries: {
               where: { status: "APPROVED" },
               orderBy: { totalScore: "desc" },
@@ -62,6 +62,8 @@ export async function GET(request: NextRequest) {
               select: {
                 popularityScore: true,
                 ratingScore: true,
+                releaseDate: true,
+                endDate: true,
               },
             },
           },
@@ -81,10 +83,25 @@ export async function GET(request: NextRequest) {
       if (t.googleTrend) sources.push("Google")
       if (t.biliDanmaku) sources.push("Bilibili")
 
+      const latestEntry = t.series.entries[0]
       return {
         id: t.id,
         rank: (page - 1) * pageSize + index + 1,
-        series: t.series,
+        series: {
+          id: t.series.id,
+          type: t.series.type,
+          titleOriginal: t.series.titleOriginal,
+          titleChinese: t.series.titleChinese,
+          titleEnglish: t.series.titleEnglish,
+          description: t.series.description,
+          coverImage: t.series.coverImage,
+          tags: t.series.tags,
+          totalSeasons: t.series.totalSeasons,
+          aggregatedScore: t.series.aggregatedScore,
+          searchKeywords: t.series.searchKeywords,
+          releaseDate: latestEntry?.releaseDate?.toISOString() ?? null,
+          endDate: latestEntry?.endDate?.toISOString() ?? null,
+        },
         totalScore: t.series.aggregatedScore,
         growthRate: Math.floor((t.series.aggregatedScore % 300) + 50),
         primarySource: sources[0] || "AniList",

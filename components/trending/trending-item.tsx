@@ -15,9 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { IpTypeBadge } from "./ip-type-badge"
 import { ExternalLink, Sparkles } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import type { TrendingListItem } from "@/types/trending"
 
 interface TrendingItemProps {
@@ -48,7 +53,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
   return (
     <>
-      <div className="flex items-center gap-4 p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors">
+      <div className="flex items-start gap-4 p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors">
         {/* 排名 */}
         <div
           className={cn(
@@ -61,8 +66,8 @@ export function TrendingItem({ item }: TrendingItemProps) {
           {item.rank}
         </div>
 
-        {/* 封面 */}
-        <div className="w-10 h-14 rounded bg-muted shrink-0 overflow-hidden relative">
+        {/* 封面 - 放大适应四行 */}
+        <div className="w-16 h-[88px] rounded bg-muted shrink-0 overflow-hidden relative">
           {item.series.coverImage ? (
             <Image
               src={item.series.coverImage}
@@ -72,40 +77,63 @@ export function TrendingItem({ item }: TrendingItemProps) {
               unoptimized
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-lg">
+            <div className="w-full h-full flex items-center justify-center text-2xl">
               🎌
             </div>
           )}
         </div>
 
-        {/* 内容区 */}
-        <div className="flex-1 min-w-0">
-          {/* 标题区域 */}
-          <div className="mb-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="font-semibold truncate cursor-pointer hover:text-primary"
-                onClick={handleViewDetail}
-              >
-                {item.series.titleOriginal}
-              </span>
-              <IpTypeBadge type={item.series.type} />
-            </div>
-            {item.series.titleChinese && (
-              <div className="text-sm text-muted-foreground truncate">
-                {item.series.titleChinese}
-              </div>
-            )}
+        {/* 内容区 - 四行布局 */}
+        <div className="flex-1 min-w-0 space-y-1">
+          {/* 第一行：标题 */}
+          <div className="flex items-center gap-2">
+            <span
+              className="font-semibold truncate cursor-pointer hover:text-primary"
+              onClick={handleViewDetail}
+            >
+              {item.series.titleOriginal}
+            </span>
+            <IpTypeBadge type={item.series.type} />
           </div>
 
-          {/* 系列信息 + 社媒热度 */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+          {/* 第二行：中文标题 */}
+          <div className="text-sm text-muted-foreground truncate">
+            {item.series.titleChinese || "-"}
+          </div>
+
+          {/* 第三行：AniList 数据 + 日期 */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="text-brand-anilist">AniList</span>
-            <span><strong className="text-foreground">{item.heatData.anilistScore}</strong>分</span>
+            <Badge variant="outline" className="shrink-0">
+              综合: {item.heatData.anilistScore}
+            </Badge>
             <span>热度 <strong className="text-foreground">{formatHeatValue(item.heatData.anilistPopularity)}</strong></span>
             <span>评分 <strong className="text-foreground">{formatHeatValue(item.heatData.anilistRating)}</strong></span>
             <span>共 <strong className="text-foreground">{item.series.totalSeasons}</strong> 季</span>
-            <span className="border-l border-border pl-3"><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
+            {(item.series.releaseDate || item.series.endDate) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="flex items-center gap-1.5 border-l border-border pl-3 cursor-help">
+                    {item.series.endDate ? (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
+                    ) : item.series.releaseDate ? (
+                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                    ) : null}
+                    <span className="text-muted-foreground">
+                      {formatDate(item.series.releaseDate)}{item.series.releaseDate && item.series.endDate && " - "}{formatDate(item.series.endDate)}
+                    </span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {item.series.releaseDate ? "开播" : ""}{item.series.releaseDate && item.series.endDate ? " - " : ""}{item.series.endDate ? "完结" : ""}
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          {/* 第四行：社媒热度 */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
             <span><span className="text-blue-400">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
             <span><span className="text-green-600">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
             <span><span className="text-brand-bilibili">B站</span> <strong className="text-foreground">{formatHeatValue(item.heatData.biliDanmaku)}</strong></span>
@@ -198,6 +226,19 @@ export function TrendingItem({ item }: TrendingItemProps) {
                   </Badge>
                 ))}
               </div>
+
+              {/* 日期 */}
+              {(item.series.releaseDate || item.series.endDate) && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {item.series.endDate ? (
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
+                  ) : item.series.releaseDate ? (
+                    <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                  ) : null}
+                  {item.series.releaseDate && <span>开播: {formatDate(item.series.releaseDate)}</span>}
+                  {item.series.endDate && <span>完结: {formatDate(item.series.endDate)}</span>}
+                </div>
+              )}
 
               {/* 简介 */}
               {item.series.description && (

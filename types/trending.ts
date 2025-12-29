@@ -148,6 +148,10 @@ export interface TrendingListItem {
     totalSeasons: number
     aggregatedScore: number
     searchKeywords: string[]
+    /** 最新一季的开播日期 */
+    releaseDate: string | null
+    /** 最新一季的完结日期 */
+    endDate: string | null
   }
   totalScore: number
   growthRate: number

@@ -40,7 +40,7 @@ export default async function TrendingPage() {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
-            // 获取该系列得分最高的 Entry 的 AniList 数据
+            // 获取该系列得分最高的 Entry 的 AniList 数据和日期
             entries: {
               where: { status: "APPROVED" },
               orderBy: { totalScore: "desc" },
@@ -48,6 +48,8 @@ export default async function TrendingPage() {
               select: {
                 popularityScore: true,
                 ratingScore: true,
+                releaseDate: true,
+                endDate: true,
               },
             },
           },
@@ -109,6 +111,7 @@ export default async function TrendingPage() {
     if (t.googleTrend) sources.push("Google")
     if (t.biliDanmaku) sources.push("Bilibili")
 
+    const latestEntry = t.series.entries[0]
     return {
       id: t.id,
       rank: index + 1,
@@ -124,6 +127,8 @@ export default async function TrendingPage() {
         totalSeasons: t.series.totalSeasons,
         aggregatedScore: t.series.aggregatedScore,
         searchKeywords: t.series.searchKeywords,
+        releaseDate: latestEntry?.releaseDate?.toISOString() ?? null,
+        endDate: latestEntry?.endDate?.toISOString() ?? null,
       },
       totalScore: t.series.aggregatedScore,
       growthRate: Math.floor((t.series.aggregatedScore % 300) + 50),
@@ -135,8 +140,8 @@ export default async function TrendingPage() {
       heatData: {
         // AniList 数据（从最高分 Entry 获取）
         anilistScore: t.series.aggregatedScore,
-        anilistPopularity: t.series.entries[0]?.popularityScore ?? null,
-        anilistRating: t.series.entries[0]?.ratingScore ?? null,
+        anilistPopularity: latestEntry?.popularityScore ?? null,
+        anilistRating: latestEntry?.ratingScore ?? null,
         // 社媒热度
         redditKarma: t.redditKarma,
         googleTrend: t.googleTrend,
