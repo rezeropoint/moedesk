@@ -70,13 +70,8 @@ export function TrendingTabs({
           <TabsTrigger value="trending">
             实时热点 ({trendingItems.length})
           </TabsTrigger>
-          <TabsTrigger value="review" className="relative">
-            待审核
-            {pendingCount > 0 && (
-              <span className="ml-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5 rounded-full">
-                {pendingCount}
-              </span>
-            )}
+          <TabsTrigger value="review">
+            待审核 ({pendingCount})
           </TabsTrigger>
         </TabsList>
 
