@@ -72,6 +72,15 @@ enum TrendingStatus {
   ARCHIVED     // 已归档
 }
 
+/// 热度来源枚举
+enum TrendingSource {
+  GOOGLE_TRENDS // Google 搜索趋势
+  REDDIT        // Reddit karma
+  TWITTER       // Twitter/X 提及
+  BILIBILI      // B站弹幕/播放
+  ANILIST       // AniList 评分
+}
+
 /// IP 表 - 所有 IP 数据（通过 status 控制审核状态）
 model IpReview {
   id            String    @id                      // 外部平台 ID
@@ -126,6 +135,12 @@ model Trending {
   twitterMentions Int?                             // Twitter/X 提及数
   biliDanmaku     Int?                             // B站弹幕数（可选）
 
+  // 热度变化率（7天）
+  googleTrendChange   Float?                       // Google Trends 7日变化率
+  redditKarmaChange   Float?                       // Reddit 7日变化率
+  twitterChange       Float?                       // Twitter 7日变化率
+  biliDanmakuChange   Float?                       // B站 7日变化率
+
   // AI 评估结果
   merchandiseScore Int?                            // 周边潜力分 (0-100)
   aiAnalysis       Json?                           // AI 分析详情
@@ -139,8 +154,32 @@ model Trending {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // 关联历史
+  history         TrendingHistory[]
+
   @@unique([ipId])                                 // 一个 IP 只有一条 Trending 记录
   @@index([status])
   @@index([merchandiseScore])
   @@map("trendings")
+}
+
+/// 热度历史表 - 时序数据（TimescaleDB hypertable）
+model TrendingHistory {
+  id          String         @default(cuid())
+  trendingId  String
+  trending    Trending       @relation(fields: [trendingId], references: [id], onDelete: Cascade)
+
+  source      TrendingSource                      // 数据来源
+  value       Float                               // 归一化热度值 (0-100)
+  rawValue    Float?                              // 原始值
+  metadata    Json?                               // 额外数据（搜索关键词、地区等）
+
+  recordedAt  DateTime       @default(now())
+
+  // 复合主键：TimescaleDB hypertable 要求分区列在主键中
+  @@id([id, recordedAt])
+  @@index([trendingId, source])
+  @@index([source, recordedAt(sort: Desc)])
+  @@index([trendingId, source, recordedAt(sort: Desc)])
+  @@map("trending_history")
 }

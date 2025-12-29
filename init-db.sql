@@ -1,8 +1,11 @@
 -- MoeDesk 数据库初始化脚本
--- 由 PostgreSQL 容器首次启动时自动执行
+-- 由 TimescaleDB 容器首次启动时自动执行
 
 -- 创建 n8n 数据库
 CREATE DATABASE n8n;
+
+-- 启用 TimescaleDB 扩展
+CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
 
 -- ============================================
 -- 以下在 moedesk 数据库中执行（POSTGRES_DB 默认值）
@@ -34,6 +37,12 @@ END $$;
 -- CreateEnum: TrendingStatus
 DO $$ BEGIN
   CREATE TYPE "TrendingStatus" AS ENUM ('WATCHING', 'FOCUSED', 'IN_PROGRESS', 'ARCHIVED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- CreateEnum: TrendingSource
+DO $$ BEGIN
+  CREATE TYPE "TrendingSource" AS ENUM ('GOOGLE_TRENDS', 'REDDIT', 'TWITTER', 'BILIBILI', 'ANILIST');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -102,6 +111,10 @@ CREATE TABLE IF NOT EXISTS "trendings" (
     "googleTrend" INTEGER,
     "twitterMentions" INTEGER,
     "biliDanmaku" INTEGER,
+    "googleTrendChange" DOUBLE PRECISION,
+    "redditKarmaChange" DOUBLE PRECISION,
+    "twitterChange" DOUBLE PRECISION,
+    "biliDanmakuChange" DOUBLE PRECISION,
     "merchandiseScore" INTEGER,
     "aiAnalysis" JSONB,
     "status" "TrendingStatus" NOT NULL DEFAULT 'WATCHING',
@@ -110,6 +123,36 @@ CREATE TABLE IF NOT EXISTS "trendings" (
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "trendings_pkey" PRIMARY KEY ("id")
 );
+
+-- CreateTable: trending_history (热度历史时序数据)
+CREATE TABLE IF NOT EXISTS "trending_history" (
+    "id" TEXT NOT NULL,
+    "trendingId" TEXT NOT NULL,
+    "source" "TrendingSource" NOT NULL,
+    "value" DOUBLE PRECISION NOT NULL,
+    "rawValue" DOUBLE PRECISION,
+    "metadata" JSONB,
+    "recordedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "trending_history_pkey" PRIMARY KEY ("id", "recordedAt")
+);
+
+-- 转换为 TimescaleDB hypertable（按 recordedAt 自动分区）
+SELECT create_hypertable('trending_history', 'recordedAt',
+  chunk_time_interval => INTERVAL '7 days',
+  if_not_exists => TRUE
+);
+
+-- 启用压缩（先启用 columnstore，再添加策略）
+ALTER TABLE "trending_history" SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = '"trendingId", source'
+);
+
+-- 添加压缩策略（7天后压缩）
+SELECT add_compression_policy('trending_history', INTERVAL '7 days', if_not_exists => TRUE);
+
+-- 添加数据保留策略（保留1年）
+SELECT add_retention_policy('trending_history', INTERVAL '1 year', if_not_exists => TRUE);
 
 -- ============================================
 -- 索引
@@ -131,6 +174,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS "trendings_ipId_key" ON "trendings"("ipId");
 CREATE INDEX IF NOT EXISTS "trendings_status_idx" ON "trendings"("status");
 CREATE INDEX IF NOT EXISTS "trendings_merchandiseScore_idx" ON "trendings"("merchandiseScore");
 
+-- trending_history 索引
+CREATE INDEX IF NOT EXISTS "trending_history_trendingId_source_idx"
+  ON "trending_history"("trendingId", "source");
+CREATE INDEX IF NOT EXISTS "trending_history_source_recordedAt_idx"
+  ON "trending_history"("source", "recordedAt" DESC);
+CREATE INDEX IF NOT EXISTS "trending_history_trendingId_source_recordedAt_idx"
+  ON "trending_history"("trendingId", "source", "recordedAt" DESC);
+
 -- ============================================
 -- 外键约束
 -- ============================================
@@ -146,6 +197,13 @@ END $$;
 DO $$ BEGIN
   ALTER TABLE "trendings" ADD CONSTRAINT "trendings_ipId_fkey"
     FOREIGN KEY ("ipId") REFERENCES "ip_reviews"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- trending_history -> trendings
+DO $$ BEGIN
+  ALTER TABLE "trending_history" ADD CONSTRAINT "trending_history_trendingId_fkey"
+    FOREIGN KEY ("trendingId") REFERENCES "trendings"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
