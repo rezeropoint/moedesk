@@ -54,6 +54,16 @@ export async function GET(request: NextRequest) {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
+            // 获取该系列得分最高的 Entry 的 AniList 数据
+            entries: {
+              where: { status: "APPROVED" },
+              orderBy: { totalScore: "desc" },
+              take: 1,
+              select: {
+                popularityScore: true,
+                ratingScore: true,
+              },
+            },
           },
         },
       },
@@ -83,6 +93,11 @@ export async function GET(request: NextRequest) {
         lastUpdated: t.updatedAt.toISOString(),
         status: t.status,
         heatData: {
+          // AniList 数据（从最高分 Entry 获取）
+          anilistScore: t.series.aggregatedScore,
+          anilistPopularity: t.series.entries[0]?.popularityScore ?? null,
+          anilistRating: t.series.entries[0]?.ratingScore ?? null,
+          // 社媒热度
           redditKarma: t.redditKarma,
           googleTrend: t.googleTrend,
           twitterMentions: t.twitterMentions,

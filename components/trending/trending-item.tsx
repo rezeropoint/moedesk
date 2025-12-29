@@ -100,11 +100,15 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
           {/* 系列信息 + 社媒热度 */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-            <span>综合分 <strong className="text-foreground">{item.series.aggregatedScore}</strong></span>
+            <span className="text-brand-anilist">AniList</span>
+            <span><strong className="text-foreground">{item.heatData.anilistScore}</strong>分</span>
+            <span>热度 <strong className="text-foreground">{formatHeatValue(item.heatData.anilistPopularity)}</strong></span>
+            <span>评分 <strong className="text-foreground">{formatHeatValue(item.heatData.anilistRating)}</strong></span>
             <span>共 <strong className="text-foreground">{item.series.totalSeasons}</strong> 季</span>
             <span className="border-l border-border pl-3"><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
             <span><span className="text-blue-400">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
             <span><span className="text-green-600">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
+            <span><span className="text-brand-bilibili">B站</span> <strong className="text-foreground">{formatHeatValue(item.heatData.biliDanmaku)}</strong></span>
           </div>
         </div>
 
@@ -204,10 +208,35 @@ export function TrendingItem({ item }: TrendingItemProps) {
             </div>
           </div>
 
+          {/* AniList 数据 */}
+          <div className="mt-4 pt-4 border-t">
+            <h4 className="text-sm font-medium mb-3 text-brand-anilist">AniList</h4>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
+                  {item.heatData.anilistScore}
+                </div>
+                <div className="text-xs text-muted-foreground">综合分</div>
+              </div>
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
+                  {formatHeatValue(item.heatData.anilistPopularity)}
+                </div>
+                <div className="text-xs text-muted-foreground">热度</div>
+              </div>
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
+                  {formatHeatValue(item.heatData.anilistRating)}
+                </div>
+                <div className="text-xs text-muted-foreground">评分</div>
+              </div>
+            </div>
+          </div>
+
           {/* 社媒热度数据 */}
           <div className="mt-4 pt-4 border-t">
             <h4 className="text-sm font-medium mb-3">社媒热度</h4>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div className="bg-muted rounded-lg p-3 text-center">
                 <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.redditKarma)}
@@ -225,6 +254,12 @@ export function TrendingItem({ item }: TrendingItemProps) {
                   {formatHeatValue(item.heatData.googleTrend)}
                 </div>
                 <div className="text-xs text-green-600">Google</div>
+              </div>
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
+                  {formatHeatValue(item.heatData.biliDanmaku)}
+                </div>
+                <div className="text-xs text-brand-bilibili">B站</div>
               </div>
             </div>
           </div>

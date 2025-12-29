@@ -3,7 +3,8 @@
  * 展示已入库 IP + 热度数据，支持 IP 审核
  */
 
-import { Flame, RefreshCw, Clock } from "lucide-react"
+import Link from "next/link"
+import { Flame, RefreshCw, Clock, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TrendingStatsCards } from "@/components/trending/trending-stats"
 import { TrendingTabs } from "@/components/trending/trending-tabs"
@@ -39,6 +40,16 @@ export default async function TrendingPage() {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
+            // 获取该系列得分最高的 Entry 的 AniList 数据
+            entries: {
+              where: { status: "APPROVED" },
+              orderBy: { totalScore: "desc" },
+              take: 1,
+              select: {
+                popularityScore: true,
+                ratingScore: true,
+              },
+            },
           },
         },
       },
@@ -122,6 +133,11 @@ export default async function TrendingPage() {
       lastUpdated: t.updatedAt.toISOString(),
       status: t.status as TrendingStatus,
       heatData: {
+        // AniList 数据（从最高分 Entry 获取）
+        anilistScore: t.series.aggregatedScore,
+        anilistPopularity: t.series.entries[0]?.popularityScore ?? null,
+        anilistRating: t.series.entries[0]?.ratingScore ?? null,
+        // 社媒热度
         redditKarma: t.redditKarma,
         googleTrend: t.googleTrend,
         twitterMentions: t.twitterMentions,
@@ -189,6 +205,12 @@ export default async function TrendingPage() {
           <Button size="sm">
             <RefreshCw className="h-4 w-4 mr-2" />
             立即刷新
+          </Button>
+          <Button asChild variant="default" size="sm">
+            <Link href="/trending/analytics">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              热度分析
+            </Link>
           </Button>
         </div>
       </div>

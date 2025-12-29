@@ -179,13 +179,15 @@ prisma/                 # Prisma Schema 和种子数据
 
 ## 数据模型
 
-五个核心表（见 `prisma/schema.prisma`）：
+核心表（见 `prisma/schema.prisma`）：
 - **User/Session** - 用户认证（JWT + 数据库会话）
-- **Ip** - 正式入库的 IP 数据（番剧、游戏、漫画等）
-- **IpReview** - 待审核 IP（灰色地带数据）
-- **Trending** - 热度追踪（多源热度 + AI 评估）
+- **Series** - 系列表（如鬼灭之刃整个系列，含聚合评分、搜索关键词）
+- **Entry** - IP 条目表（单个作品/季度，含审核状态、外部平台 ID）
+- **Trending** - 系列级热度追踪（多源热度 + AI 周边潜力评估）
+- **TrendingHistory** - 热度历史时序数据（TimescaleDB hypertable）
+- **SystemConfig** - 系统配置键值存储
 
-关键枚举：`IpType`（ANIME/GAME/MANGA...）、`ReviewStatus`、`TrendingStatus`
+关键枚举：`IpType`（ANIME/GAME/MANGA/LIGHT_NOVEL/VTUBER/MOVIE/OTHER）、`ReviewStatus`（PENDING/APPROVED/REJECTED）、`TrendingStatus`（WATCHING/FOCUSED/IN_PROGRESS/ARCHIVED）、`TrendingSource`
 
 ## n8n 集成
 

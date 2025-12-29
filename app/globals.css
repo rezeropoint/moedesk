@@ -46,6 +46,9 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* 数据源品牌色 */
+  --color-brand-anilist: var(--brand-anilist);
+  --color-brand-bilibili: var(--brand-bilibili);
 }
 
 :root {
@@ -71,6 +74,9 @@
   /* 自定义语义化颜色 */
   --sidebar-bg: oklch(0.12 0.02 280);
   --page-bg: oklch(0.975 0.005 265);
+  /* 数据源品牌色 */
+  --brand-anilist: oklch(0.65 0.15 230);    /* #02a9ff */
+  --brand-bilibili: oklch(0.65 0.2 0);      /* #fb7299 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

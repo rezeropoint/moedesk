@@ -121,6 +121,11 @@ export interface TrendingStats {
 
 /** 热度数据 */
 export interface HeatData {
+  // AniList 数据（来源于 Entry）
+  anilistScore: number        // 综合分
+  anilistPopularity: number | null  // 热度
+  anilistRating: number | null      // 评分
+  // 社媒热度（来源于 Trending）
   redditKarma: number | null
   googleTrend: number | null
   twitterMentions: number | null
