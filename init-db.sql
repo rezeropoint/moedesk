@@ -130,8 +130,8 @@ CREATE TABLE IF NOT EXISTS "trending_history" (
     "id" TEXT NOT NULL,
     "trendingId" TEXT NOT NULL,
     "source" "TrendingSource" NOT NULL,
-    "value" DOUBLE PRECISION NOT NULL,
-    "rawValue" DOUBLE PRECISION,
+    "popularity" INTEGER NOT NULL,
+    "rating" INTEGER,
     "metadata" JSONB,
     "recordedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "trending_history_pkey" PRIMARY KEY ("id", "recordedAt")

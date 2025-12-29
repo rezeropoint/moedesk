@@ -171,8 +171,8 @@ model TrendingHistory {
   trending    Trending       @relation(fields: [trendingId], references: [id], onDelete: Cascade)
 
   source      TrendingSource                      // 数据来源
-  value       Float                               // 归一化热度值 (0-100)
-  rawValue    Float?                              // 原始值
+  popularity  Int                                 // 热度值（如 AniList popularity）
+  rating      Int?                                // 评分（如 AniList averageScore）
   metadata    Json?                               // 额外数据（搜索关键词、地区等）
 
   recordedAt  DateTime       @default(now())

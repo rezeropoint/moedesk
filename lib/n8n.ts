@@ -51,7 +51,7 @@ export const SOP_WORKFLOW_DEFINITIONS: SOPWorkflowDefinition[] = [
     description: "监测 Reddit r/anime 讨论热度",
     phase: "content_production",
     triggerType: "schedule",
-    triggerConfig: "每小时",
+    triggerConfig: "每日 05:00",
   },
   {
     id: "sop-02-google-trends",
@@ -60,7 +60,7 @@ export const SOP_WORKFLOW_DEFINITIONS: SOPWorkflowDefinition[] = [
     description: "追踪动漫相关搜索趋势",
     phase: "content_production",
     triggerType: "schedule",
-    triggerConfig: "每日",
+    triggerConfig: "每日 04:00",
   },
   {
     id: "sop-03-topic-scoring",
