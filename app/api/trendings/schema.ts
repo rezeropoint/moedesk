@@ -46,7 +46,6 @@ export const TrendingListItem = z.object({
   }),
   totalScore: z.number(),
   growthRate: z.number(),
-  heatLevel: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   primarySource: z.string(),
   sources: z.array(z.string()),
   discussionCount: z.number(),

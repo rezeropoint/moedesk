@@ -111,11 +111,6 @@ CREATE TABLE IF NOT EXISTS "trendings" (
     "googleTrend" INTEGER,
     "twitterMentions" INTEGER,
     "biliDanmaku" INTEGER,
-    "anilistChange" DOUBLE PRECISION,
-    "googleTrendChange" DOUBLE PRECISION,
-    "redditKarmaChange" DOUBLE PRECISION,
-    "twitterChange" DOUBLE PRECISION,
-    "biliDanmakuChange" DOUBLE PRECISION,
     "merchandiseScore" INTEGER,
     "aiAnalysis" JSONB,
     "status" "TrendingStatus" NOT NULL DEFAULT 'WATCHING',
@@ -224,3 +219,20 @@ SELECT
   NOW(),
   NOW()
 WHERE NOT EXISTS (SELECT 1 FROM "users" WHERE "email" = 'admin@moedesk.com');
+
+-- ============================================
+-- 系统配置表
+-- ============================================
+
+-- CreateTable: system_configs
+CREATE TABLE IF NOT EXISTS "system_configs" (
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "system_configs_pkey" PRIMARY KEY ("key")
+);
+
+-- 插入默认配置
+INSERT INTO "system_configs" ("key", "value", "updatedAt")
+SELECT 'surge_config', '{"threshold": 50, "limit": 5, "weights": {"anilist": 0.30, "google": 0.25, "reddit": 0.20, "twitter": 0.15, "bilibili": 0.10}}', NOW()
+WHERE NOT EXISTS (SELECT 1 FROM "system_configs" WHERE "key" = 'surge_config');

@@ -73,16 +73,12 @@ export async function GET(request: NextRequest) {
       if (t.googleTrend) sources.push("Google")
       if (t.biliDanmaku) sources.push("Bilibili")
 
-      const heatLevel: 1 | 2 | 3 =
-        t.ip.totalScore >= 8000 ? 3 : t.ip.totalScore >= 5000 ? 2 : 1
-
       return {
         id: t.id,
         rank: (page - 1) * pageSize + index + 1,
         ip: t.ip,
         totalScore: t.ip.totalScore,
         growthRate: Math.floor((t.ip.totalScore % 300) + 50),
-        heatLevel,
         primarySource: sources[0] || "AniList",
         sources: sources.length > 0 ? sources : ["AniList"],
         discussionCount,

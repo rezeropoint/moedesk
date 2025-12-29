@@ -115,7 +115,6 @@ export interface TrendingListItem {
   }
   totalScore: number
   growthRate: number
-  heatLevel: 1 | 2 | 3
   primarySource: string
   sources: string[]
   discussionCount: number
@@ -153,3 +152,43 @@ export type SourceFilter =
 
 /** 热度状态筛选 */
 export type TrendingStatusFilter = TrendingStatus | "ALL"
+
+// ============== 热度飙升类型 ==============
+
+/** 各数据源变化率 */
+export interface SourceChanges {
+  anilist?: number
+  google?: number
+  reddit?: number
+  twitter?: number
+  bilibili?: number
+}
+
+/** 热度飙升项 */
+export interface SurgeItem {
+  id: string
+  ipId: string
+  titleOriginal: string
+  titleChinese: string | null
+  coverImage: string | null
+  type: IpType
+  totalScore: number
+  compositeChange: number    // 综合变化率（实时计算）
+  sourceChanges: SourceChanges
+}
+
+/** 数据源权重配置 */
+export interface SourceWeightsConfig {
+  anilist: number
+  google: number
+  reddit: number
+  twitter: number
+  bilibili: number
+}
+
+/** 飙升配置（含阈值和权重） */
+export interface SurgeConfig {
+  threshold: number
+  limit: number
+  weights: SourceWeightsConfig
+}

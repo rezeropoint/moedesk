@@ -135,13 +135,6 @@ model Trending {
   twitterMentions Int?                             // Twitter/X 提及数
   biliDanmaku     Int?                             // B站弹幕数（可选）
 
-  // 热度变化率（7天）
-  anilistChange       Float?                       // AniList 7日变化率
-  googleTrendChange   Float?                       // Google Trends 7日变化率
-  redditKarmaChange   Float?                       // Reddit 7日变化率
-  twitterChange       Float?                       // Twitter 7日变化率
-  biliDanmakuChange   Float?                       // B站 7日变化率
-
   // AI 评估结果
   merchandiseScore Int?                            // 周边潜力分 (0-100)
   aiAnalysis       Json?                           // AI 分析详情
@@ -184,4 +177,13 @@ model TrendingHistory {
   @@index([source, recordedAt(sort: Desc)])
   @@index([trendingId, source, recordedAt(sort: Desc)])
   @@map("trending_history")
+}
+
+/// 系统配置表 - 存储全局配置
+model SystemConfig {
+  key       String   @id              // 配置键名
+  value     String                    // 配置值（JSON 格式）
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
 }

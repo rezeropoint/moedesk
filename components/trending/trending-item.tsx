@@ -95,11 +95,6 @@ export function TrendingItem({ item }: TrendingItemProps) {
                 {item.ip.titleOriginal}
               </span>
               <IpTypeBadge type={item.ip.type} />
-              {item.heatLevel >= 1 && (
-                <span className="text-orange-500 shrink-0">
-                  {"🔥".repeat(item.heatLevel)}
-                </span>
-              )}
             </div>
             {item.ip.titleChinese && (
               <div className="text-sm text-muted-foreground truncate">
