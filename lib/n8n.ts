@@ -496,3 +496,33 @@ export async function triggerWorkflow<T>(
 
   return response.json()
 }
+
+/**
+ * 激活/停用 n8n 工作流
+ * @param id n8n 工作流 ID
+ * @param active 是否激活
+ * @returns 更新后的工作流信息
+ */
+export async function toggleN8NWorkflow(
+  id: string,
+  active: boolean
+): Promise<N8NWorkflow | null> {
+  try {
+    // n8n API: POST /workflows/{id}/activate 或 /workflows/{id}/deactivate
+    const endpoint = active
+      ? `/workflows/${id}/activate`
+      : `/workflows/${id}/deactivate`
+
+    return await n8nFetch<N8NWorkflow>(endpoint, {
+      method: "POST",
+      // 绕过缓存，确保获取最新状态
+      next: { revalidate: 0 },
+    })
+  } catch (error) {
+    console.error(
+      `Failed to ${active ? "activate" : "deactivate"} workflow ${id}:`,
+      error
+    )
+    return null
+  }
+}
