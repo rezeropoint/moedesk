@@ -5,12 +5,12 @@
  */
 
 import { useState, useTransition } from "react"
-import { IpReviewItem } from "./ip-review-item"
+import { EntryItem } from "./entry-item"
 import { Button } from "@/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import type { IpType, ReviewStatus } from "@/types/trending"
 
-interface IpReviewListItem {
+interface EntryListItem {
   id: string
   type: IpType
   titleOriginal: string
@@ -28,17 +28,17 @@ interface IpReviewListItem {
   createdAt: string
 }
 
-interface IpReviewListProps {
-  initialData: IpReviewListItem[]
+interface EntryListProps {
+  initialData: EntryListItem[]
 }
 
-export function IpReviewList({ initialData }: IpReviewListProps) {
+export function EntryList({ initialData }: EntryListProps) {
   const [items, setItems] = useState(initialData)
   const [isPending, startTransition] = useTransition()
 
   const handleRefresh = () => {
     startTransition(async () => {
-      const response = await fetch("/api/ip-reviews?status=PENDING")
+      const response = await fetch("/api/entries?status=PENDING")
       if (response.ok) {
         const result = await response.json()
         setItems(result.data.items)
@@ -80,7 +80,7 @@ export function IpReviewList({ initialData }: IpReviewListProps) {
           </div>
         ) : (
           items.map((item) => (
-            <IpReviewItem
+            <EntryItem
               key={item.id}
               item={item}
               onApproved={() => handleApproved(item.id)}

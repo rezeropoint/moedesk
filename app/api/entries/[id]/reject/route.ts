@@ -1,12 +1,12 @@
 /**
- * IP 审核通过 API
- * POST /api/ip-reviews/[id]/approve
+ * Entry 审核拒绝 API
+ * POST /api/entries/[id]/reject
  */
 
 import { NextRequest } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
-import { ApproveReq } from "../../schema"
+import { RejectReq } from "../../schema"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -19,14 +19,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { id } = await context.params
 
-  let body = {}
+  let body
   try {
     body = await request.json()
   } catch {
-    // 允许空 body
+    return Response.json({ error: "请求体格式错误" }, { status: 400 })
   }
 
-  const parsed = ApproveReq.safeParse(body)
+  const parsed = RejectReq.safeParse(body)
   if (!parsed.success) {
     return Response.json(
       { error: "Validation failed", details: parsed.error.flatten() },
@@ -35,40 +35,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const review = await db.ipReview.findUnique({ where: { id } })
+    const entry = await db.entry.findUnique({ where: { id } })
 
-    if (!review) {
+    if (!entry) {
       return Response.json({ error: "审核记录不存在" }, { status: 404 })
     }
 
-    if (review.status !== "PENDING") {
+    if (entry.status !== "PENDING") {
       return Response.json({ error: "该记录已被审核" }, { status: 400 })
     }
 
-    await db.$transaction(async (tx) => {
-      // 更新审核状态
-      await tx.ipReview.update({
-        where: { id },
-        data: {
-          status: "APPROVED",
-          reviewedBy: session.user.id,
-          reviewedAt: new Date(),
-          reviewNote: parsed.data.reviewNote,
-        },
-      })
-
-      // 创建热度追踪记录
-      await tx.trending.create({
-        data: {
-          ipId: review.id,
-          status: "WATCHING",
-        },
-      })
+    await db.entry.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        reviewedBy: session.user.id,
+        reviewedAt: new Date(),
+        reviewNote: parsed.data.reviewNote,
+      },
     })
 
     return Response.json({ data: { success: true } })
   } catch (error) {
-    console.error("Failed to approve IP:", error)
-    return Response.json({ error: "审核通过失败" }, { status: 500 })
+    console.error("Failed to reject entry:", error)
+    return Response.json({ error: "审核拒绝失败" }, { status: 500 })
   }
 }

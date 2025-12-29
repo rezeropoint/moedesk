@@ -78,8 +78,26 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 -- IP 相关表（泛宅文化：番剧、游戏、漫画等）
 -- ============================================
 
--- CreateTable: ip_reviews (所有 IP 数据，通过 status 控制审核状态)
-CREATE TABLE IF NOT EXISTS "ip_reviews" (
+-- CreateTable: series (系列表)
+CREATE TABLE IF NOT EXISTS "series" (
+    "id" TEXT NOT NULL,
+    "titleOriginal" TEXT NOT NULL,
+    "titleChinese" TEXT,
+    "titleEnglish" TEXT,
+    "type" "IpType" NOT NULL,
+    "coverImage" TEXT,
+    "description" TEXT,
+    "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "searchKeywords" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "totalSeasons" INTEGER NOT NULL DEFAULT 0,
+    "aggregatedScore" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "series_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable: entries (IP 条目表)
+CREATE TABLE IF NOT EXISTS "entries" (
     "id" TEXT NOT NULL,
     "type" "IpType" NOT NULL,
     "titleOriginal" TEXT NOT NULL,
@@ -95,18 +113,21 @@ CREATE TABLE IF NOT EXISTS "ip_reviews" (
     "totalScore" INTEGER NOT NULL DEFAULT 0,
     "metadata" JSONB,
     "externalUrls" JSONB,
+    "seriesId" TEXT,
+    "seasonNumber" INTEGER,
+    "seasonLabel" TEXT,
     "status" "ReviewStatus" NOT NULL DEFAULT 'PENDING',
     "reviewedBy" TEXT,
     "reviewedAt" TIMESTAMP(3),
     "reviewNote" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "ip_reviews_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "entries_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable: trendings (热度追踪数据)
+-- CreateTable: trendings (热度追踪数据，关联到系列)
 CREATE TABLE IF NOT EXISTS "trendings" (
     "id" TEXT NOT NULL,
-    "ipId" TEXT NOT NULL,
+    "seriesId" TEXT NOT NULL,
     "redditKarma" INTEGER,
     "googleTrend" INTEGER,
     "twitterMentions" INTEGER,
@@ -161,13 +182,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
 -- sessions 索引
 CREATE INDEX IF NOT EXISTS "sessions_userId_idx" ON "sessions"("userId");
 
--- ip_reviews 索引
-CREATE INDEX IF NOT EXISTS "ip_reviews_status_idx" ON "ip_reviews"("status");
-CREATE INDEX IF NOT EXISTS "ip_reviews_type_idx" ON "ip_reviews"("type");
-CREATE INDEX IF NOT EXISTS "ip_reviews_totalScore_idx" ON "ip_reviews"("totalScore");
+-- series 索引
+CREATE INDEX IF NOT EXISTS "series_type_idx" ON "series"("type");
+CREATE INDEX IF NOT EXISTS "series_aggregatedScore_idx" ON "series"("aggregatedScore");
+
+-- entries 索引
+CREATE INDEX IF NOT EXISTS "entries_status_idx" ON "entries"("status");
+CREATE INDEX IF NOT EXISTS "entries_type_idx" ON "entries"("type");
+CREATE INDEX IF NOT EXISTS "entries_totalScore_idx" ON "entries"("totalScore");
+CREATE INDEX IF NOT EXISTS "entries_seriesId_idx" ON "entries"("seriesId");
 
 -- trendings 索引
-CREATE UNIQUE INDEX IF NOT EXISTS "trendings_ipId_key" ON "trendings"("ipId");
+CREATE UNIQUE INDEX IF NOT EXISTS "trendings_seriesId_key" ON "trendings"("seriesId");
 CREATE INDEX IF NOT EXISTS "trendings_status_idx" ON "trendings"("status");
 CREATE INDEX IF NOT EXISTS "trendings_merchandiseScore_idx" ON "trendings"("merchandiseScore");
 
@@ -190,10 +216,17 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- trendings -> ip_reviews
+-- entries -> series
 DO $$ BEGIN
-  ALTER TABLE "trendings" ADD CONSTRAINT "trendings_ipId_fkey"
-    FOREIGN KEY ("ipId") REFERENCES "ip_reviews"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  ALTER TABLE "entries" ADD CONSTRAINT "entries_seriesId_fkey"
+    FOREIGN KEY ("seriesId") REFERENCES "series"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- trendings -> series
+DO $$ BEGIN
+  ALTER TABLE "trendings" ADD CONSTRAINT "trendings_seriesId_fkey"
+    FOREIGN KEY ("seriesId") REFERENCES "series"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

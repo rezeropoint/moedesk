@@ -8,11 +8,11 @@ import { useState, useTransition, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { TrendingList } from "./trending-list"
-import { IpReviewList } from "./ip-review-list"
+import { EntryList } from "./entry-list"
 import { RefreshCw } from "lucide-react"
 import type { TrendingListItem, IpType, ReviewStatus } from "@/types/trending"
 
-interface IpReviewListItem {
+interface EntryListItem {
   id: string
   type: IpType
   titleOriginal: string
@@ -32,7 +32,7 @@ interface IpReviewListItem {
 
 interface TrendingTabsProps {
   initialTrendings: TrendingListItem[]
-  initialPendingReviews: IpReviewListItem[]
+  initialPendingReviews: EntryListItem[]
   pendingCount: number
 }
 
@@ -95,7 +95,7 @@ export function TrendingTabs({
       </TabsContent>
 
       <TabsContent value="review" className="m-0">
-        <IpReviewList initialData={initialPendingReviews} />
+        <EntryList initialData={initialPendingReviews} />
       </TabsContent>
     </Tabs>
   )

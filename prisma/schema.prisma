@@ -81,12 +81,46 @@ enum TrendingSource {
   ANILIST       // AniList 评分
 }
 
-/// IP 表 - 所有 IP 数据（通过 status 控制审核状态）
-model IpReview {
+/// 系列表（如：鬼灭之刃整个系列）
+model Series {
+  id              String    @id @default(cuid())
+
+  // 系列名称（多语言）
+  titleOriginal   String                           // 原始标题 (日文/英文)
+  titleChinese    String?                          // 中文标题
+  titleEnglish    String?                          // 英文标题
+
+  // 系列信息
+  type            IpType                           // 主类型 (ANIME/GAME/...)
+  coverImage      String?                          // 系列封面
+  description     String?                          // 系列简介
+  tags            String[]  @default([])           // 标签
+
+  // 搜索关键词（用于社媒数据匹配）
+  searchKeywords  String[]  @default([])           // ["Demon Slayer", "鬼灭之刃"]
+
+  // 统计字段（审核时自动计算）
+  totalSeasons    Int       @default(0)            // 季数
+  aggregatedScore Int       @default(0)            // 聚合评分
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // 关联
+  entries         Entry[]                          // 包含的所有季度
+  trending        Trending?                        // 系列级热度追踪
+
+  @@index([type])
+  @@index([aggregatedScore])
+  @@map("series")
+}
+
+/// IP 条目表 - 单个 IP 数据（如某一季动画）
+model Entry {
   id            String    @id                      // 外部平台 ID
   type          IpType
 
-  // 基础信息（同 Ip 表）
+  // 基础信息
   titleOriginal String
   titleChinese  String?
   titleEnglish  String?
@@ -104,6 +138,12 @@ model IpReview {
   metadata      Json?
   externalUrls  Json?
 
+  // 系列关联
+  seriesId      String?                            // 所属系列（可空，支持独立 IP）
+  series        Series? @relation(fields: [seriesId], references: [id])
+  seasonNumber  Int?                               // 第几季 (1, 2, 3...)
+  seasonLabel   String?                            // 季度标签 ("S1", "剧场版", "OVA")
+
   // 审核相关
   status        ReviewStatus @default(PENDING)
   reviewedBy    String?                            // 审核人 User.id
@@ -112,22 +152,20 @@ model IpReview {
 
   createdAt     DateTime  @default(now())
 
-  // 关联
-  trendings     Trending[]
-
   @@index([status])
   @@index([type])
   @@index([totalScore])
-  @@map("ip_reviews")
+  @@index([seriesId])
+  @@map("entries")
 }
 
-/// 热度追踪表 - 运营决策数据
+/// 热度追踪表 - 运营决策数据（关联到系列级）
 model Trending {
   id              String   @id @default(cuid())
 
-  // 关联 IP
-  ipId            String
-  ip              IpReview @relation(fields: [ipId], references: [id], onDelete: Cascade)
+  // 关联系列
+  seriesId        String   @unique                 // 所属系列
+  series          Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
 
   // 多源热度数据（定时更新）
   redditKarma     Int?                             // Reddit karma（番剧）
@@ -151,7 +189,6 @@ model Trending {
   // 关联历史
   history         TrendingHistory[]
 
-  @@unique([ipId])                                 // 一个 IP 只有一条 Trending 记录
   @@index([status])
   @@index([merchandiseScore])
   @@map("trendings")

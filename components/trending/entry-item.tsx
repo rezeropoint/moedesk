@@ -25,13 +25,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IpTypeBadge } from "./ip-type-badge"
-import { Check, X, Loader2, Pencil } from "lucide-react"
+import { SeriesSelector } from "./series-selector"
+import { Check, X, Loader2, Pencil, ClipboardCheck } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import type { IpType, ReviewStatus } from "@/types/trending"
 import { formatDate } from "@/lib/utils"
 
-interface IpReviewItemProps {
+interface EntryItemProps {
   item: {
     id: string
     type: IpType
@@ -53,11 +54,11 @@ interface IpReviewItemProps {
   onRejected: () => void
 }
 
-export function IpReviewItem({
+export function EntryItem({
   item,
   onApproved,
   onRejected,
-}: IpReviewItemProps) {
+}: EntryItemProps) {
   const router = useRouter()
   const [isApproving, startApprove] = useTransition()
   const [isRejecting, startReject] = useTransition()
@@ -67,12 +68,31 @@ export function IpReviewItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.titleChinese ?? "")
   const [isSaving, startSave] = useTransition()
+  // 系列关联状态
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null)
+  const [seasonNumber, setSeasonNumber] = useState<string>("")
+  const [seasonLabel, setSeasonLabel] = useState("")
 
 
   const handleApprove = () => {
     startApprove(async () => {
-      const response = await fetch(`/api/ip-reviews/${item.id}/approve`, {
+      const body: Record<string, unknown> = {
+        createNewSeries: !selectedSeriesId,
+      }
+      if (selectedSeriesId) {
+        body.seriesId = selectedSeriesId
+      }
+      if (seasonNumber) {
+        body.seasonNumber = parseInt(seasonNumber, 10)
+      }
+      if (seasonLabel.trim()) {
+        body.seasonLabel = seasonLabel.trim()
+      }
+
+      const response = await fetch(`/api/entries/${item.id}/approve`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       })
       if (response.ok) {
         onApproved()
@@ -85,7 +105,7 @@ export function IpReviewItem({
     if (!rejectNote.trim()) return
 
     startReject(async () => {
-      const response = await fetch(`/api/ip-reviews/${item.id}/reject`, {
+      const response = await fetch(`/api/entries/${item.id}/reject`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewNote: rejectNote }),
@@ -101,7 +121,7 @@ export function IpReviewItem({
     if (!editValue.trim()) return
 
     startSave(async () => {
-      const response = await fetch(`/api/ip-reviews/${item.id}`, {
+      const response = await fetch(`/api/entries/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ titleChinese: editValue.trim() }),
@@ -208,14 +228,6 @@ export function IpReviewItem({
         {/* 操作按钮 */}
         <div className="flex items-center gap-2 shrink-0">
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setDetailDialogOpen(true)}
-          >
-            <Pencil className="h-4 w-4 mr-1" />
-            修改
-          </Button>
-          <Button
             variant="outline"
             size="sm"
             onClick={() => setRejectDialogOpen(true)}
@@ -230,20 +242,16 @@ export function IpReviewItem({
           </Button>
           <Button
             size="sm"
-            onClick={handleApprove}
+            onClick={() => setDetailDialogOpen(true)}
             disabled={isApproving || isRejecting}
           >
-            {isApproving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4 mr-1" />
-            )}
-            通过
+            <ClipboardCheck className="h-4 w-4 mr-1" />
+            审批
           </Button>
         </div>
       </div>
 
-      {/* 详情弹窗 */}
+      {/* 审批弹窗 */}
       <Dialog
         open={detailDialogOpen}
         onOpenChange={(open) => {
@@ -257,9 +265,10 @@ export function IpReviewItem({
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <span className="truncate">{item.titleOriginal}</span>
+              审批 IP
               <IpTypeBadge type={item.type} />
             </DialogTitle>
+            <div className="text-lg font-semibold pt-1">{item.titleOriginal}</div>
             <DialogDescription className="space-y-1">
               {/* 中文标题（可编辑） */}
               <div className="flex items-center gap-2">
@@ -397,6 +406,39 @@ export function IpReviewItem({
                   {item.description}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* 系列关联 */}
+          <div className="mt-4 pt-4 border-t space-y-4">
+            <SeriesSelector
+              value={selectedSeriesId}
+              onChange={setSelectedSeriesId}
+              suggestedTitle={item.titleOriginal}
+            />
+
+            {/* 季度信息 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="season-number">季度编号</Label>
+                <Input
+                  id="season-number"
+                  type="number"
+                  min="1"
+                  value={seasonNumber}
+                  onChange={(e) => setSeasonNumber(e.target.value)}
+                  placeholder="如: 1, 2, 3"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="season-label">季度标签</Label>
+                <Input
+                  id="season-label"
+                  value={seasonLabel}
+                  onChange={(e) => setSeasonLabel(e.target.value)}
+                  placeholder="如: S1, 剧场版, OVA"
+                />
+              </div>
             </div>
           </div>
 

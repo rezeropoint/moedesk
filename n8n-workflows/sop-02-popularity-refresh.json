@@ -16,7 +16,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT ir.id, (ir.metadata->>'anilistId')::INT as anilist_id, t.id as trending_id\nFROM ip_reviews ir\nLEFT JOIN trendings t ON t.\"ipId\" = ir.id\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND ir.metadata->>'anilistId' IS NOT NULL\nORDER BY ir.\"totalScore\" DESC",
+        "query": "SELECT e.id as entry_id, (e.metadata->>'anilistId')::INT as anilist_id, t.id as trending_id\nFROM entries e\nLEFT JOIN series s ON s.id = e.\"seriesId\"\nLEFT JOIN trendings t ON t.\"seriesId\" = s.id\nWHERE e.status IN ('PENDING', 'APPROVED')\n  AND e.metadata->>'anilistId' IS NOT NULL\nORDER BY e.\"totalScore\" DESC",
         "options": {}
       },
       "id": "postgres-query",
@@ -118,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=-- 1. 更新 ip_reviews 热度字段\nUPDATE ip_reviews\nSET \"popularityScore\" = {{ $json.popularity }},\n    \"ratingScore\" = {{ $json.rating }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.ipId }}';\n\n{{ $json.trendingId ? `-- 2. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, \"recordedAt\")\nVALUES (gen_random_uuid(), '${$json.trendingId}', 'ANILIST', ${$json.popularity}, ${$json.rating}, NOW());\n\n-- 3. 更新 Trending 时间戳\nUPDATE trendings SET \"updatedAt\" = NOW() WHERE id = '${$json.trendingId}';` : '-- 无 Trending 记录，跳过历史写入' }}",
+        "query": "=-- 1. 更新 entries 热度字段\nUPDATE entries\nSET \"popularityScore\" = {{ $json.popularity }},\n    \"ratingScore\" = {{ $json.rating }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.entry_id }}';\n\n{{ $json.trendingId ? `-- 2. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, \"recordedAt\")\nVALUES (gen_random_uuid(), '${$json.trendingId}', 'ANILIST', ${$json.popularity}, ${$json.rating}, NOW());\n\n-- 3. 更新 Trending 时间戳\nUPDATE trendings SET \"updatedAt\" = NOW() WHERE id = '${$json.trendingId}';` : '-- 无 Trending 记录，跳过历史写入' }}",
         "options": {}
       },
       "id": "postgres-update",

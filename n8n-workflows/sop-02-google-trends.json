@@ -16,7 +16,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT t.id as trending_id, ir.id as ip_id, COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") as search_keyword\nFROM trendings t\nINNER JOIN ip_reviews ir ON ir.id = t.\"ipId\"\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") IS NOT NULL\nORDER BY ir.\"totalScore\" DESC\nLIMIT 100",
+        "query": "SELECT t.id as trending_id, s.id as series_id, COALESCE(s.\"titleEnglish\", s.\"titleOriginal\") as search_keyword\nFROM trendings t\nINNER JOIN series s ON s.id = t.\"seriesId\"\nWHERE COALESCE(s.\"titleEnglish\", s.\"titleOriginal\") IS NOT NULL\nORDER BY s.\"aggregatedScore\" DESC\nLIMIT 100",
         "options": {}
       },
       "id": "postgres-query",

@@ -1,12 +1,12 @@
 /**
- * IP 待审核列表 API
- * GET /api/ip-reviews - 获取待审核 IP 列表
+ * Entry 待审核列表 API
+ * GET /api/entries - 获取待审核 Entry 列表
  */
 
 import { NextRequest } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
-import { IpReviewListReq } from "./schema"
+import { EntryListReq } from "./schema"
 
 export async function GET(request: NextRequest) {
   const session = await getSession()
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = Object.fromEntries(request.nextUrl.searchParams)
-  const parsed = IpReviewListReq.safeParse(params)
+  const parsed = EntryListReq.safeParse(params)
 
   if (!parsed.success) {
     return Response.json(
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [items, total] = await Promise.all([
-      db.ipReview.findMany({
+      db.entry.findMany({
         where,
         orderBy: { totalScore: "desc" },
         skip: (page - 1) * pageSize,
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
         },
       }),
-      db.ipReview.count({ where }),
+      db.entry.count({ where }),
     ])
 
     return Response.json({
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Failed to fetch IP reviews:", error)
+    console.error("Failed to fetch entries:", error)
     return Response.json({ error: "获取待审核列表失败" }, { status: 500 })
   }
 }

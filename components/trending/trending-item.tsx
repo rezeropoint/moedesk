@@ -15,14 +15,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { IpTypeBadge } from "./ip-type-badge"
 import { ExternalLink, Sparkles } from "lucide-react"
-import { cn, formatDate } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import type { TrendingListItem } from "@/types/trending"
 
 interface TrendingItemProps {
@@ -40,7 +35,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
   const handleGenerateContent = () => {
     // TODO: 触发 n8n 内容生成工作流
-    console.log("Generate content for:", item.ip.id)
+    console.log("Generate content for:", item.series.id)
   }
 
   const formatHeatValue = (value: number | null) => {
@@ -68,10 +63,10 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
         {/* 封面 */}
         <div className="w-10 h-14 rounded bg-muted shrink-0 overflow-hidden relative">
-          {item.ip.coverImage ? (
+          {item.series.coverImage ? (
             <Image
-              src={item.ip.coverImage}
-              alt={item.ip.titleOriginal}
+              src={item.series.coverImage}
+              alt={item.series.titleOriginal}
               fill
               className="object-cover"
               unoptimized
@@ -92,42 +87,21 @@ export function TrendingItem({ item }: TrendingItemProps) {
                 className="font-semibold truncate cursor-pointer hover:text-primary"
                 onClick={handleViewDetail}
               >
-                {item.ip.titleOriginal}
+                {item.series.titleOriginal}
               </span>
-              <IpTypeBadge type={item.ip.type} />
+              <IpTypeBadge type={item.series.type} />
             </div>
-            {item.ip.titleChinese && (
+            {item.series.titleChinese && (
               <div className="text-sm text-muted-foreground truncate">
-                {item.ip.titleChinese}
+                {item.series.titleChinese}
               </div>
             )}
           </div>
 
-          {/* AniList 评分 + 社媒热度 + 日期 */}
+          {/* 系列信息 + 社媒热度 */}
           <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-            <span className="text-blue-600">AniList</span>
-            <span>综合 <strong className="text-foreground">{item.ip.totalScore}</strong></span>
-            <span>热度 <strong className="text-foreground">{item.ip.popularityScore ?? "-"}</strong></span>
-            <span>评分 <strong className="text-foreground">{item.ip.ratingScore ?? "-"}</strong></span>
-            {(item.ip.releaseDate || item.ip.endDate) && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="border-l border-border pl-3 cursor-help flex items-center gap-1.5">
-                    {item.ip.endDate ? (
-                      <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
-                    ) : item.ip.releaseDate ? (
-                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
-                    ) : null}
-                    <strong className="text-foreground">
-                      {formatDate(item.ip.releaseDate)}{item.ip.releaseDate && item.ip.endDate && " - "}{formatDate(item.ip.endDate)}
-                    </strong>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {item.ip.releaseDate ? "开播" : ""}{item.ip.releaseDate && item.ip.endDate ? " - " : ""}{item.ip.endDate ? "完结" : ""}
-                </TooltipContent>
-              </Tooltip>
-            )}
+            <span>综合分 <strong className="text-foreground">{item.series.aggregatedScore}</strong></span>
+            <span>共 <strong className="text-foreground">{item.series.totalSeasons}</strong> 季</span>
             <span className="border-l border-border pl-3"><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
             <span><span className="text-blue-400">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
             <span><span className="text-green-600">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
@@ -152,20 +126,20 @@ export function TrendingItem({ item }: TrendingItemProps) {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <span className="truncate">{item.ip.titleOriginal}</span>
-              <IpTypeBadge type={item.ip.type} />
+              <span className="truncate">{item.series.titleOriginal}</span>
+              <IpTypeBadge type={item.series.type} />
             </DialogTitle>
             <DialogDescription className="space-y-1">
-              {item.ip.titleChinese && (
+              {item.series.titleChinese && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground shrink-0">中文:</span>
-                  <span className="text-foreground">{item.ip.titleChinese}</span>
+                  <span className="text-foreground">{item.series.titleChinese}</span>
                 </div>
               )}
-              {item.ip.titleEnglish && (
+              {item.series.titleEnglish && (
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground shrink-0">英文:</span>
-                  <span>{item.ip.titleEnglish}</span>
+                  <span>{item.series.titleEnglish}</span>
                 </div>
               )}
             </DialogDescription>
@@ -174,10 +148,10 @@ export function TrendingItem({ item }: TrendingItemProps) {
           <div className="grid grid-cols-[120px_1fr] gap-4">
             {/* 封面 */}
             <div className="w-[120px] h-[160px] rounded-lg bg-muted overflow-hidden relative">
-              {item.ip.coverImage ? (
+              {item.series.coverImage ? (
                 <Image
-                  src={item.ip.coverImage}
-                  alt={item.ip.titleOriginal}
+                  src={item.series.coverImage}
+                  alt={item.series.titleOriginal}
                   fill
                   className="object-cover"
                   unoptimized
@@ -191,53 +165,40 @@ export function TrendingItem({ item }: TrendingItemProps) {
 
             {/* 信息 */}
             <div className="space-y-3">
-              {/* AniList 评分详情 */}
+              {/* 系列统计 */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-blue-600">AniList 数据</span>
+                  <span className="text-xs font-medium text-primary">系列数据</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="bg-muted rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold text-primary">
-                      {item.ip.totalScore}
+                      {item.series.aggregatedScore}
                     </div>
                     <div className="text-xs text-muted-foreground">综合分</div>
                   </div>
                   <div className="bg-muted rounded-lg p-3 text-center">
                     <div className="text-2xl font-bold">
-                      {item.ip.popularityScore ?? "-"}
+                      {item.series.totalSeasons}
                     </div>
-                    <div className="text-xs text-muted-foreground">热度分</div>
-                  </div>
-                  <div className="bg-muted rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">
-                      {item.ip.ratingScore ?? "-"}
-                    </div>
-                    <div className="text-xs text-muted-foreground">评分</div>
+                    <div className="text-xs text-muted-foreground">季数</div>
                   </div>
                 </div>
               </div>
 
               {/* 标签 */}
               <div className="flex flex-wrap gap-1">
-                {item.ip.tags.map((tag) => (
+                {item.series.tags.map((tag) => (
                   <Badge key={tag} variant="secondary" className="text-xs">
                     {tag}
                   </Badge>
                 ))}
               </div>
 
-              {/* 日期 */}
-              <div className="text-sm text-muted-foreground">
-                {item.ip.releaseDate && <span>开播: {formatDate(item.ip.releaseDate)}</span>}
-                {item.ip.endDate && <span className="ml-4">完结: {formatDate(item.ip.endDate)}</span>}
-                {!item.ip.releaseDate && !item.ip.endDate && <span>日期: -</span>}
-              </div>
-
               {/* 简介 */}
-              {item.ip.description && (
+              {item.series.description && (
                 <div className="text-sm text-muted-foreground max-h-[100px] overflow-y-auto">
-                  {item.ip.description}
+                  {item.series.description}
                 </div>
               )}
             </div>

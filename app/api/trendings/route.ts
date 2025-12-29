@@ -30,19 +30,18 @@ export async function GET(request: NextRequest) {
   try {
     const where = {
       ...(status && { status }),
-      ip: {
-        status: "APPROVED" as const,
+      series: {
         ...(type && { type }),
       },
     }
 
     const trendings = await db.trending.findMany({
       where,
-      orderBy: { ip: { totalScore: "desc" } },
+      orderBy: { series: { aggregatedScore: "desc" } },
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
-        ip: {
+        series: {
           select: {
             id: true,
             type: true,
@@ -52,10 +51,9 @@ export async function GET(request: NextRequest) {
             description: true,
             coverImage: true,
             tags: true,
-            releaseDate: true,
-            popularityScore: true,
-            ratingScore: true,
-            totalScore: true,
+            totalSeasons: true,
+            aggregatedScore: true,
+            searchKeywords: true,
           },
         },
       },
@@ -76,9 +74,9 @@ export async function GET(request: NextRequest) {
       return {
         id: t.id,
         rank: (page - 1) * pageSize + index + 1,
-        ip: t.ip,
-        totalScore: t.ip.totalScore,
-        growthRate: Math.floor((t.ip.totalScore % 300) + 50),
+        series: t.series,
+        totalScore: t.series.aggregatedScore,
+        growthRate: Math.floor((t.series.aggregatedScore % 300) + 50),
         primarySource: sources[0] || "AniList",
         sources: sources.length > 0 ? sources : ["AniList"],
         discussionCount,

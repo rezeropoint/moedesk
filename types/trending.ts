@@ -22,6 +22,36 @@ export type TrendingStatus = "WATCHING" | "FOCUSED" | "IN_PROGRESS" | "ARCHIVED"
 
 // ============== 业务类型 ==============
 
+/** 系列 */
+export interface Series {
+  id: string
+  titleOriginal: string
+  titleChinese: string | null
+  titleEnglish: string | null
+  type: IpType
+  coverImage: string | null
+  description: string | null
+  tags: string[]
+  searchKeywords: string[]
+  totalSeasons: number
+  aggregatedScore: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 系列下的季度信息（简化版） */
+export interface SeriesSeason {
+  id: string
+  titleOriginal: string
+  titleChinese: string | null
+  seasonNumber: number | null
+  seasonLabel: string | null
+  totalScore: number
+  releaseDate: string | null
+  endDate: string | null
+  coverImage: string | null
+}
+
 /** IP 基础信息 */
 export interface IpBase {
   id: string
@@ -41,8 +71,11 @@ export interface IpBase {
   externalUrls: Record<string, string> | null
 }
 
-/** IP 数据 */
-export interface IpReview extends IpBase {
+/** IP 条目数据 */
+export interface Entry extends IpBase {
+  seriesId: string | null
+  seasonNumber: number | null
+  seasonLabel: string | null
   status: ReviewStatus
   reviewedBy: string | null
   reviewedAt: string | null
@@ -50,11 +83,11 @@ export interface IpReview extends IpBase {
   createdAt: string
 }
 
-/** 热度追踪数据 */
+/** 热度追踪数据（关联到系列） */
 export interface Trending {
   id: string
-  ipId: string
-  ip: IpReview
+  seriesId: string
+  series: Series
   redditKarma: number | null
   googleTrend: number | null
   twitterMentions: number | null
@@ -94,11 +127,11 @@ export interface HeatData {
   biliDanmaku: number | null
 }
 
-/** 热点列表项（热度排行） */
+/** 热点列表项（热度排行，基于系列） */
 export interface TrendingListItem {
   id: string
   rank: number
-  ip: {
+  series: {
     id: string
     type: IpType
     titleOriginal: string
@@ -107,11 +140,9 @@ export interface TrendingListItem {
     description: string | null
     coverImage: string | null
     tags: string[]
-    releaseDate: string | null
-    endDate: string | null
-    popularityScore: number | null
-    ratingScore: number | null
-    totalScore: number
+    totalSeasons: number
+    aggregatedScore: number
+    searchKeywords: string[]
   }
   totalScore: number
   growthRate: number
@@ -124,7 +155,7 @@ export interface TrendingListItem {
 }
 
 /** 待审核列表项 */
-export interface IpReviewListItem {
+export interface EntryListItem {
   id: string
   type: IpType
   titleOriginal: string

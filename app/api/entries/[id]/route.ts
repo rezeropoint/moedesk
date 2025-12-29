@@ -1,6 +1,6 @@
 /**
- * IP 审核记录更新 API
- * PATCH /api/ip-reviews/[id]
+ * Entry 审核记录更新 API
+ * PATCH /api/entries/[id]
  */
 
 import { NextRequest } from "next/server"
@@ -35,13 +35,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   try {
-    const review = await db.ipReview.findUnique({ where: { id } })
+    const entry = await db.entry.findUnique({ where: { id } })
 
-    if (!review) {
+    if (!entry) {
       return Response.json({ error: "审核记录不存在" }, { status: 404 })
     }
 
-    const updated = await db.ipReview.update({
+    const updated = await db.entry.update({
       where: { id },
       data: { titleChinese: parsed.data.titleChinese },
       select: { titleChinese: true },
@@ -51,7 +51,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: { success: true, titleChinese: updated.titleChinese },
     })
   } catch (error) {
-    console.error("Failed to update IP review:", error)
+    console.error("Failed to update entry:", error)
     return Response.json({ error: "更新失败" }, { status: 500 })
   }
 }

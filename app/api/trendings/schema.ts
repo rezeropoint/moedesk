@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import { IpTypeSchema } from "../ip-reviews/schema"
+import { IpTypeSchema } from "../entries/schema"
 
 /** 热度状态枚举 */
 export const TrendingStatusSchema = z.enum([
@@ -36,7 +36,7 @@ export const TrendingListReq = z.object({
 export const TrendingListItem = z.object({
   id: z.string(),
   rank: z.number(),
-  ip: z.object({
+  series: z.object({
     id: z.string(),
     type: IpTypeSchema,
     titleOriginal: z.string(),

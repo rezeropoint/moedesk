@@ -23,11 +23,10 @@ export default async function TrendingPage() {
   const [stats, trendings, pendingReviews, endingSoonAnime] = await Promise.all([
     getTrendingStats(),
     db.trending.findMany({
-      where: { ip: { status: "APPROVED" } },
       take: 20,
-      orderBy: { ip: { totalScore: "desc" } },
+      orderBy: { series: { aggregatedScore: "desc" } },
       include: {
-        ip: {
+        series: {
           select: {
             id: true,
             type: true,
@@ -37,16 +36,14 @@ export default async function TrendingPage() {
             description: true,
             coverImage: true,
             tags: true,
-            releaseDate: true,
-            endDate: true,
-            popularityScore: true,
-            ratingScore: true,
-            totalScore: true,
+            totalSeasons: true,
+            aggregatedScore: true,
+            searchKeywords: true,
           },
         },
       },
     }),
-    db.ipReview.findMany({
+    db.entry.findMany({
       where: { status: "PENDING" },
       take: 20,
       orderBy: { totalScore: "desc" },
@@ -69,7 +66,7 @@ export default async function TrendingPage() {
       },
     }),
     // 获取即将完结番（endDate 在未来30天内，且已通过审核）
-    db.ipReview.findMany({
+    db.entry.findMany({
       where: {
         type: "ANIME",
         status: "APPROVED",
@@ -101,30 +98,24 @@ export default async function TrendingPage() {
     if (t.googleTrend) sources.push("Google")
     if (t.biliDanmaku) sources.push("Bilibili")
 
-    const heatLevel: 1 | 2 | 3 =
-      t.ip.totalScore >= 8000 ? 3 : t.ip.totalScore >= 5000 ? 2 : 1
-
     return {
       id: t.id,
       rank: index + 1,
-      ip: {
-        id: t.ip.id,
-        type: t.ip.type as IpType,
-        titleOriginal: t.ip.titleOriginal,
-        titleChinese: t.ip.titleChinese,
-        titleEnglish: t.ip.titleEnglish,
-        description: t.ip.description,
-        coverImage: t.ip.coverImage,
-        tags: t.ip.tags,
-        releaseDate: t.ip.releaseDate?.toISOString() ?? null,
-        endDate: t.ip.endDate?.toISOString() ?? null,
-        popularityScore: t.ip.popularityScore,
-        ratingScore: t.ip.ratingScore,
-        totalScore: t.ip.totalScore,
+      series: {
+        id: t.series.id,
+        type: t.series.type as IpType,
+        titleOriginal: t.series.titleOriginal,
+        titleChinese: t.series.titleChinese,
+        titleEnglish: t.series.titleEnglish,
+        description: t.series.description,
+        coverImage: t.series.coverImage,
+        tags: t.series.tags,
+        totalSeasons: t.series.totalSeasons,
+        aggregatedScore: t.series.aggregatedScore,
+        searchKeywords: t.series.searchKeywords,
       },
-      totalScore: t.ip.totalScore,
-      growthRate: Math.floor((t.ip.totalScore % 300) + 50), // 基于分数计算增长率
-      heatLevel,
+      totalScore: t.series.aggregatedScore,
+      growthRate: Math.floor((t.series.aggregatedScore % 300) + 50),
       primarySource: sources[0] || "AniList",
       sources: sources.length > 0 ? sources : ["AniList"],
       discussionCount,
