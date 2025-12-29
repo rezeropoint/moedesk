@@ -190,3 +190,4 @@ Webhook/Schedule 触发
 |-----|------|
 | `sop-01-anilist-sync.json` | AniList 新番同步（定时触发） |
 | `sop-01-anilist-sync-manual.json` | AniList 新番同步（Webhook 手动触发） |
+| `sop-02-popularity-refresh.json` | 热度全量刷新（每天 03:00） |

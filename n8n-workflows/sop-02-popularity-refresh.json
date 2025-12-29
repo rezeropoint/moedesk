@@ -1,0 +1,185 @@
+{
+  "name": "SOP-02 热度全量刷新",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 3 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "每天 03:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, (metadata->>'anilistId')::INT as anilist_id\nFROM ip_reviews\nWHERE status IN ('PENDING', 'APPROVED')\n  AND metadata->>'anilistId' IS NOT NULL\nORDER BY \"totalScore\" DESC",
+        "options": {}
+      },
+      "id": "postgres-query",
+      "name": "查询待更新 IP",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [220, 0],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst BATCH_SIZE = 50;\nconst batches = [];\n\nfor (let i = 0; i < items.length; i += BATCH_SIZE) {\n  const batch = items.slice(i, i + BATCH_SIZE);\n  batches.push({\n    json: {\n      batchIndex: Math.floor(i / BATCH_SIZE),\n      ids: batch.map(item => item.json.anilist_id),\n      idMapping: batch.reduce((acc, item) => {\n        acc[item.json.anilist_id] = item.json.id;\n        return acc;\n      }, {})\n    }\n  });\n}\n\nif (batches.length === 0) {\n  return [{ json: { empty: true, message: '没有需要更新的 IP' } }];\n}\n\nreturn batches;"
+      },
+      "id": "code-batch",
+      "name": "分批处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "empty-check",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-empty",
+      "name": "检查是否为空",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-batches",
+      "name": "循环批次",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [880, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graphql.anilist.co",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query ($ids: [Int]) { Page(perPage: 50) { media(id_in: $ids, type: ANIME) { id popularity averageScore } } }\",\n  \"variables\": { \"ids\": {{ JSON.stringify($json.ids) }} }\n}",
+        "options": { "response": { "response": { "responseFormat": "json" } } }
+      },
+      "id": "anilist-request",
+      "name": "AniList 批量查询",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loopItem = $('循环批次').item;\nconst anilistRes = $input.first().json;\nconst idMapping = loopItem.json.idMapping;\n\nconst mediaList = anilistRes?.data?.Page?.media || [];\nconst results = [];\n\nfor (const media of mediaList) {\n  const ipId = idMapping[media.id];\n  if (!ipId) continue;\n  \n  const popScore = Math.min((media.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = media.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  results.push({\n    json: {\n      ipId,\n      anilistId: media.id,\n      popularityScore: media.popularity || 0,\n      ratingScore: media.averageScore || 0,\n      totalScore\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, batchIndex: loopItem.json.batchIndex } }];\n}\n\nreturn results;"
+      },
+      "id": "code-process",
+      "name": "处理响应数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "batch-empty-check",
+              "leftValue": "={{ $json.empty }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-batch-empty",
+      "name": "检查批次结果",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE ip_reviews\nSET \"popularityScore\" = {{ $json.popularityScore }},\n    \"ratingScore\" = {{ $json.ratingScore }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.ipId }}'",
+        "options": {}
+      },
+      "id": "postgres-update",
+      "name": "更新热度",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1760, -100],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-node",
+      "name": "等待 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 统计结果\nreturn [{ json: { success: true, message: '热度刷新完成', timestamp: new Date().toISOString() } }];"
+      },
+      "id": "code-stats",
+      "name": "生成统计",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    }
+  ],
+  "connections": {
+    "每天 03:00": { "main": [[{ "node": "查询待更新 IP", "type": "main", "index": 0 }]] },
+    "查询待更新 IP": { "main": [[{ "node": "分批处理", "type": "main", "index": 0 }]] },
+    "分批处理": { "main": [[{ "node": "检查是否为空", "type": "main", "index": 0 }]] },
+    "检查是否为空": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "循环批次", "type": "main", "index": 0 }]
+      ]
+    },
+    "循环批次": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "AniList 批量查询", "type": "main", "index": 0 }]
+      ]
+    },
+    "AniList 批量查询": { "main": [[{ "node": "处理响应数据", "type": "main", "index": 0 }]] },
+    "处理响应数据": { "main": [[{ "node": "检查批次结果", "type": "main", "index": 0 }]] },
+    "检查批次结果": {
+      "main": [
+        [{ "node": "等待 1s", "type": "main", "index": 0 }],
+        [{ "node": "更新热度", "type": "main", "index": 0 }]
+      ]
+    },
+    "更新热度": { "main": [[{ "node": "等待 1s", "type": "main", "index": 0 }]] },
+    "等待 1s": { "main": [[{ "node": "循环批次", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}
