@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/tooltip"
 import { IpTypeBadge } from "./ip-type-badge"
 import { ExternalLink, Sparkles } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import type { TrendingListItem } from "@/types/trending"
 
 interface TrendingItemProps {
@@ -41,11 +41,6 @@ export function TrendingItem({ item }: TrendingItemProps) {
   const handleGenerateContent = () => {
     // TODO: 触发 n8n 内容生成工作流
     console.log("Generate content for:", item.ip.id)
-  }
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-"
-    return new Date(dateStr).toLocaleDateString("zh-CN")
   }
 
   const formatHeatValue = (value: number | null) => {
@@ -122,7 +117,12 @@ export function TrendingItem({ item }: TrendingItemProps) {
             {(item.ip.releaseDate || item.ip.endDate) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="border-l border-border pl-3 cursor-help">
+                  <span className="border-l border-border pl-3 cursor-help flex items-center gap-1.5">
+                    {item.ip.endDate ? (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
+                    ) : item.ip.releaseDate ? (
+                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                    ) : null}
                     <strong className="text-foreground">
                       {formatDate(item.ip.releaseDate)}{item.ip.releaseDate && item.ip.endDate && " - "}{formatDate(item.ip.endDate)}
                     </strong>
@@ -133,10 +133,9 @@ export function TrendingItem({ item }: TrendingItemProps) {
                 </TooltipContent>
               </Tooltip>
             )}
-            <span className="border-l border-border pl-3">Reddit <strong className="text-orange-600">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
-            <span>Twitter <strong className="text-blue-600">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
-            <span>Google <strong className="text-green-600">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
-            <span>B站 <strong className="text-pink-600">{formatHeatValue(item.heatData.biliDanmaku)}</strong></span>
+            <span className="border-l border-border pl-3"><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
+            <span><span className="text-blue-400">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
+            <span><span className="text-green-600">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
           </div>
         </div>
 
@@ -252,30 +251,24 @@ export function TrendingItem({ item }: TrendingItemProps) {
           {/* 社媒热度数据 */}
           <div className="mt-4 pt-4 border-t">
             <h4 className="text-sm font-medium mb-3">社媒热度</h4>
-            <div className="grid grid-cols-4 gap-2">
-              <div className="bg-orange-50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-orange-600">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.redditKarma)}
                 </div>
-                <div className="text-xs text-muted-foreground">Reddit</div>
+                <div className="text-xs text-orange-600">Reddit</div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-blue-600">
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.twitterMentions)}
                 </div>
-                <div className="text-xs text-muted-foreground">Twitter</div>
+                <div className="text-xs text-blue-400">Twitter/X</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-green-600">
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.googleTrend)}
                 </div>
-                <div className="text-xs text-muted-foreground">Google</div>
-              </div>
-              <div className="bg-pink-50 rounded-lg p-3 text-center">
-                <div className="text-lg font-bold text-pink-600">
-                  {formatHeatValue(item.heatData.biliDanmaku)}
-                </div>
-                <div className="text-xs text-muted-foreground">B站弹幕</div>
+                <div className="text-xs text-green-600">Google</div>
               </div>
             </div>
           </div>

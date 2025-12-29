@@ -29,6 +29,7 @@ import { Check, X, Loader2, Pencil } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import type { IpType, ReviewStatus } from "@/types/trending"
+import { formatDate } from "@/lib/utils"
 
 interface IpReviewItemProps {
   item: {
@@ -67,11 +68,6 @@ export function IpReviewItem({
   const [editValue, setEditValue] = useState(item.titleChinese ?? "")
   const [isSaving, startSave] = useTransition()
 
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-"
-    return new Date(dateStr).toLocaleDateString("zh-CN")
-  }
 
   const handleApprove = () => {
     startApprove(async () => {
@@ -175,8 +171,15 @@ export function IpReviewItem({
             {(item.releaseDate || item.endDate) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-muted-foreground cursor-help">
-                    {formatDate(item.releaseDate)}{item.releaseDate && item.endDate && " - "}{formatDate(item.endDate)}
+                  <span className="flex items-center gap-1.5 cursor-help">
+                    {item.endDate ? (
+                      <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
+                    ) : item.releaseDate ? (
+                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                    ) : null}
+                    <span className="text-muted-foreground">
+                      {formatDate(item.releaseDate)}{item.releaseDate && item.endDate && " - "}{formatDate(item.endDate)}
+                    </span>
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -376,10 +379,15 @@ export function IpReviewItem({
               </div>
 
               {/* 日期 */}
-              <div className="text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                {item.endDate ? (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
+                ) : item.releaseDate ? (
+                  <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                ) : null}
                 {item.releaseDate && <span>开播: {formatDate(item.releaseDate)}</span>}
-                {item.endDate && <span className="ml-4">完结: {formatDate(item.endDate)}</span>}
-                <span className="mx-2">|</span>
+                {item.endDate && <span>完结: {formatDate(item.endDate)}</span>}
+                <span>|</span>
                 <span>入库: {formatDate(item.createdAt)}</span>
               </div>
 
