@@ -170,3 +170,31 @@ export interface PieChartDataPoint {
   value: number
   percentage: number
 }
+
+// ============== 归一化数据 ==============
+
+/** 归一化后的历史数据点 */
+export interface NormalizedHistoryDataPoint extends HistoryDataPoint {
+  normalizedPopularity: number  // 归一化值 (0-100)
+}
+
+/** 数据源活跃度 */
+export interface SourceActivity {
+  source: string
+  activityScore: number         // 活跃度分数 (0-100)
+  hasData: boolean              // 是否有数据
+  latestValue: number | null    // 最新原始值
+}
+
+/** 雷达图数据点 */
+export interface RadarChartDataPoint {
+  source: string
+  score: number
+  fullMark: number
+}
+
+/** 综合视图数据点（按日期和数据源） */
+export interface CombinedViewDataPoint {
+  date: string
+  sources: Record<string, number>  // source -> normalizedPopularity
+}

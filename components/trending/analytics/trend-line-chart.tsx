@@ -4,6 +4,8 @@ import { useMemo } from "react"
 import {
   LineChart,
   Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,6 +15,7 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { normalizeHistoryData, computeSourceRanges } from "@/lib/normalize"
 import type { HistoryDataPoint, SelectedIp, SourceFilter } from "@/types/analytics"
 
 interface TrendLineChartProps {
@@ -23,14 +26,31 @@ interface TrendLineChartProps {
   loading?: boolean
 }
 
-// 颜色配置
+// 颜色配置 - IP 对比用（使用 CSS 变量，oklch 格式）
 const COLORS = [
-  "#8884d8",
-  "#82ca9d",
-  "#ffc658",
-  "#ff7300",
-  "#00C49F",
+  "oklch(var(--chart-1))",
+  "oklch(var(--chart-2))",
+  "oklch(var(--chart-3))",
+  "oklch(var(--chart-4))",
+  "oklch(var(--chart-5))",
 ]
+
+// 数据源颜色配置 - 综合视图用（品牌色，oklch 格式）
+const SOURCE_COLORS: Record<string, string> = {
+  ANILIST: "oklch(0.65 0.15 230)",      // AniList 蓝
+  GOOGLE_TRENDS: "oklch(0.60 0.15 250)", // Google 蓝
+  REDDIT: "oklch(0.60 0.22 30)",        // Reddit 橙
+  TWITTER: "oklch(0.65 0.15 220)",      // Twitter 蓝
+  BILIBILI: "oklch(0.65 0.20 0)",       // Bilibili 粉
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  ANILIST: "AniList",
+  GOOGLE_TRENDS: "Google",
+  REDDIT: "Reddit",
+  TWITTER: "Twitter",
+  BILIBILI: "Bilibili",
+}
 
 const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "ALL", label: "综合" },
@@ -41,6 +61,9 @@ const SOURCE_OPTIONS: { value: SourceFilter; label: string }[] = [
   { value: "BILIBILI", label: "Bilibili" },
 ]
 
+// 所有数据源列表
+const ALL_SOURCES = ["ANILIST", "GOOGLE_TRENDS", "REDDIT", "TWITTER", "BILIBILI"]
+
 export function TrendLineChart({
   data,
   selectedIps,
@@ -48,42 +71,72 @@ export function TrendLineChart({
   onSourceChange,
   loading,
 }: TrendLineChartProps) {
-  // 转换数据为图表格式
-  const chartData = useMemo(() => {
-    if (!data.length) return []
+  // 综合模式：归一化后按数据源分组展示
+  const combinedChartData = useMemo(() => {
+    if (!data.length || activeSource !== "ALL") return []
 
-    // 按日期分组
+    const normalized = normalizeHistoryData(data)
+    const dateMap = new Map<string, Record<string, number[]>>()
+
+    for (const point of normalized) {
+      if (!dateMap.has(point.date)) {
+        dateMap.set(point.date, {})
+      }
+      const dateEntry = dateMap.get(point.date)!
+      if (!dateEntry[point.source]) {
+        dateEntry[point.source] = []
+      }
+      dateEntry[point.source].push(point.normalizedPopularity)
+    }
+
+    // 转换为数组，每个源取平均值
+    return Array.from(dateMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, sources]) => {
+        const result: Record<string, string | number> = {
+          date: date.slice(5), // 只显示月-日
+        }
+        for (const source of ALL_SOURCES) {
+          const values = sources[source]
+          if (values && values.length > 0) {
+            result[source] = Math.round(
+              (values.reduce((a, b) => a + b, 0) / values.length) * 10
+            ) / 10
+          }
+        }
+        return result
+      })
+  }, [data, activeSource])
+
+  // 单源模式：原始值多 IP 对比
+  const singleSourceChartData = useMemo(() => {
+    if (!data.length || activeSource === "ALL") return []
+
     const dateMap = new Map<string, Record<string, number>>()
 
     for (const point of data) {
-      // 如果选了特定数据源，只取该数据源的数据
-      if (activeSource !== "ALL" && point.source !== activeSource) {
-        continue
-      }
+      if (point.source !== activeSource) continue
 
       if (!dateMap.has(point.date)) {
         dateMap.set(point.date, {})
       }
-
       const dateEntry = dateMap.get(point.date)!
-      const key = point.trendingId
-
-      if (activeSource === "ALL") {
-        // 综合模式：累加所有数据源
-        dateEntry[key] = (dateEntry[key] || 0) + point.popularity
-      } else {
-        // 单一数据源模式
-        dateEntry[key] = point.popularity
-      }
+      dateEntry[point.trendingId] = point.popularity
     }
 
-    // 转换为数组
     return Array.from(dateMap.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([date, values]) => ({
-        date: date.slice(5), // 只显示月-日
+        date: date.slice(5),
         ...values,
       }))
+  }, [data, activeSource])
+
+  // 获取有数据的数据源列表
+  const availableSources = useMemo(() => {
+    if (activeSource !== "ALL") return []
+    const ranges = computeSourceRanges(data)
+    return ALL_SOURCES.filter((s) => ranges[s])
   }, [data, activeSource])
 
   // 生成图例名称映射
@@ -95,21 +148,26 @@ export function TrendLineChart({
     return map
   }, [selectedIps])
 
+  // 判断是否有数据
+  const hasData = activeSource === "ALL"
+    ? combinedChartData.length > 0
+    : singleSourceChartData.length > 0
+
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">热度趋势</CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle className="text-base shrink-0">热度趋势</CardTitle>
           <Tabs
             value={activeSource}
             onValueChange={(v) => onSourceChange(v as SourceFilter)}
           >
-            <TabsList className="h-8">
+            <TabsList className="h-8 overflow-x-auto flex-nowrap">
               {SOURCE_OPTIONS.map((opt) => (
                 <TabsTrigger
                   key={opt.value}
                   value={opt.value}
-                  className="text-xs px-2"
+                  className="text-xs px-2 whitespace-nowrap"
                 >
                   {opt.label}
                 </TabsTrigger>
@@ -117,19 +175,69 @@ export function TrendLineChart({
             </TabsList>
           </Tabs>
         </div>
+        {activeSource === "ALL" && (
+          <p className="text-xs text-muted-foreground mt-1">
+            综合模式：各数据源归一化到 0-100 后对比
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             加载中...
           </div>
-        ) : chartData.length === 0 ? (
+        ) : !hasData ? (
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             暂无数据
           </div>
-        ) : (
+        ) : activeSource === "ALL" ? (
+          // 综合模式：归一化堆叠面积图
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
+            <AreaChart data={combinedChartData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(v) => `${v}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "var(--radius)",
+                }}
+                formatter={(value, name) => [
+                  typeof value === "number" ? `${value.toFixed(1)}` : String(value),
+                  SOURCE_LABELS[String(name)] || String(name),
+                ]}
+              />
+              <Legend formatter={(value) => SOURCE_LABELS[value] || value} />
+              {availableSources.map((source) => (
+                <Area
+                  key={source}
+                  type="monotone"
+                  dataKey={source}
+                  name={source}
+                  stroke={SOURCE_COLORS[source]}
+                  fill={SOURCE_COLORS[source]}
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          // 单源模式：原始值折线图
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={singleSourceChartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="date"
@@ -158,9 +266,7 @@ export function TrendLineChart({
                   ipNameMap[String(name)] || String(name),
                 ]}
               />
-              <Legend
-                formatter={(value) => ipNameMap[value] || value}
-              />
+              <Legend formatter={(value) => ipNameMap[value] || value} />
               {selectedIps.map((ip, index) => (
                 <Line
                   key={ip.trendingId}

@@ -1,20 +1,20 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { AnalyticsHeader } from "./analytics-header"
 import { IpSelector } from "./ip-selector"
 import { TimeRangeTabs } from "./time-range-tabs"
 import { TrendLineChart } from "./trend-line-chart"
 import { ChangeRateBarChart } from "./change-rate-bar-chart"
-import { SourcePieChart } from "./source-pie-chart"
+import { SourceRadarChart } from "./source-radar-chart"
 import { MetricsCards } from "./metrics-cards"
+import { computeSourceActivityScores } from "@/lib/normalize"
 import type {
   SelectedIp,
   TimeRange,
   SourceFilter,
   HistoryDataPoint,
   CompareItem,
-  SourceContribution,
   AnalyticsMetrics,
 } from "@/types/analytics"
 
@@ -31,7 +31,6 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
   // 数据状态
   const [historyData, setHistoryData] = useState<HistoryDataPoint[]>([])
   const [compareData, setCompareData] = useState<CompareItem[]>([])
-  const [sourcesData, setSourcesData] = useState<SourceContribution[]>([])
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null)
 
   // 加载状态
@@ -39,12 +38,16 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
   const [loadingCompare, setLoadingCompare] = useState(false)
   const [loadingSources, setLoadingSources] = useState(false)
 
+  // 基于历史数据计算数据源活跃度
+  const sourceActivityData = useMemo(() => {
+    return computeSourceActivityScores(historyData)
+  }, [historyData])
+
   // 获取数据
   const fetchData = useCallback(async () => {
     if (selectedIps.length === 0) {
       setHistoryData([])
       setCompareData([])
-      setSourcesData([])
       setMetrics(null)
       return
     }
@@ -87,13 +90,12 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
     }
 
     try {
-      // 数据源分析
+      // 数据源分析（只获取 metrics）
       const sourcesRes = await fetch(
         `/api/trendings/analytics/sources?trendingIds=${trendingIds}`
       )
       if (sourcesRes.ok) {
-        const { overall, metrics: m } = await sourcesRes.json()
-        setSourcesData(overall)
+        const { metrics: m } = await sourcesRes.json()
         setMetrics(m)
       }
     } catch (error) {
@@ -158,7 +160,7 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
 
         {/* 右侧数据源分析 */}
         <div className="space-y-6">
-          <SourcePieChart data={sourcesData} loading={loadingSources} />
+          <SourceRadarChart data={sourceActivityData} loading={loadingHistory} />
           <MetricsCards metrics={metrics} loading={loadingSources} />
         </div>
       </div>
