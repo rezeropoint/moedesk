@@ -1,0 +1,190 @@
+{
+  "name": "SOP-02 Reddit Karma 监测",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 5 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "每天 05:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.id as trending_id, ir.id as ip_id, COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") as search_keyword, t.\"redditKarma\" as current_karma\nFROM trendings t\nINNER JOIN ip_reviews ir ON ir.id = t.\"ipId\"\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND ir.type = 'ANIME'\n  AND COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") IS NOT NULL\nORDER BY ir.\"totalScore\" DESC\nLIMIT 50",
+        "options": {}
+      },
+      "id": "postgres-query",
+      "name": "查询待更新 IP",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [220, 0],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "empty-check",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-empty",
+      "name": "检查是否为空",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-items",
+      "name": "逐条处理",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.reddit.com/r/anime/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "q", "value": "={{ $json.search_keyword }}" },
+            { "name": "restrict_sr", "value": "true" },
+            { "name": "sort", "value": "new" },
+            { "name": "t", "value": "week" },
+            { "name": "limit", "value": "25" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "MoeDesk/1.0 (https://github.com/moedesk)" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "reddit-request",
+      "name": "Reddit 搜索",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loopItem = $('逐条处理').item;\nconst redditRes = $input.first().json;\nconst trendingId = loopItem.json.trending_id;\nconst ipId = loopItem.json.ip_id;\nconst searchKeyword = loopItem.json.search_keyword;\nconst currentKarma = loopItem.json.current_karma || 0;\n\n// 检查 API 响应\nif (redditRes.error || !redditRes.data) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: redditRes.error || '无搜索结果'\n    }\n  }];\n}\n\nconst posts = redditRes.data?.children || [];\n\nif (posts.length === 0) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: '无相关帖子'\n    }\n  }];\n}\n\n// 统计总 karma（帖子得分之和）\nlet totalKarma = 0;\nlet totalComments = 0;\nlet postCount = 0;\n\nfor (const child of posts) {\n  const post = child.data;\n  // 过滤标题中包含搜索关键词的帖子（更精确匹配）\n  const titleLower = post.title.toLowerCase();\n  const keywordLower = searchKeyword.toLowerCase();\n  \n  if (titleLower.includes(keywordLower)) {\n    totalKarma += post.score || 0;\n    totalComments += post.num_comments || 0;\n    postCount++;\n  }\n}\n\n// 如果没有匹配的帖子，使用所有搜索结果\nif (postCount === 0) {\n  for (const child of posts) {\n    const post = child.data;\n    totalKarma += post.score || 0;\n    totalComments += post.num_comments || 0;\n    postCount++;\n  }\n}\n\n// 如果仍然没有数据\nif (postCount === 0) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: '无有效帖子数据'\n    }\n  }];\n}\n\n// 归一化热度值 (0-100)\n// Karma 归一化公式：log10(karma + 1) / log10(50001) * 100\n// 假设 50000 karma 为满分 100\nconst normalizedValue = Math.min(Math.round(Math.log10(totalKarma + 1) / Math.log10(50001) * 100), 100);\n\n// 计算 7 日变化率（与数据库中上次的值对比）\nlet changeRate = null;\nif (currentKarma > 0) {\n  changeRate = Math.round(((totalKarma - currentKarma) / currentKarma * 100) * 100) / 100;\n}\n\nreturn [{\n  json: {\n    trendingId,\n    ipId,\n    searchKeyword,\n    redditKarma: totalKarma,\n    normalizedValue,\n    redditKarmaChange: changeRate,\n    metadata: {\n      subreddit: 'anime',\n      postCount,\n      totalComments,\n      timeRange: 'week'\n    }\n  }\n}];"
+      },
+      "id": "code-process",
+      "name": "处理响应数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-error",
+      "name": "检查处理结果",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=-- 1. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, value, \"rawValue\", metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'REDDIT',\n  {{ $json.normalizedValue }},\n  {{ $json.redditKarma }},\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值和变化率\nUPDATE trendings\nSET\n  \"redditKarma\" = {{ $json.redditKarma }},\n  \"redditKarmaChange\" = {{ $json.redditKarmaChange !== null ? $json.redditKarmaChange : 'NULL' }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}';",
+        "options": {}
+      },
+      "id": "postgres-update",
+      "name": "更新数据库",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1540, -100],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "seconds"
+      },
+      "id": "wait-node",
+      "name": "等待 1s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    message: 'Reddit Karma 数据更新完成',\n    source: 'REDDIT',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-stats",
+      "name": "生成统计",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 0]
+    }
+  ],
+  "connections": {
+    "每天 05:00": { "main": [[{ "node": "查询待更新 IP", "type": "main", "index": 0 }]] },
+    "查询待更新 IP": { "main": [[{ "node": "检查是否为空", "type": "main", "index": 0 }]] },
+    "检查是否为空": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "逐条处理", "type": "main", "index": 0 }]
+      ]
+    },
+    "逐条处理": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "Reddit 搜索", "type": "main", "index": 0 }]
+      ]
+    },
+    "Reddit 搜索": { "main": [[{ "node": "处理响应数据", "type": "main", "index": 0 }]] },
+    "处理响应数据": { "main": [[{ "node": "检查处理结果", "type": "main", "index": 0 }]] },
+    "检查处理结果": {
+      "main": [
+        [{ "node": "等待 1s", "type": "main", "index": 0 }],
+        [{ "node": "更新数据库", "type": "main", "index": 0 }]
+      ]
+    },
+    "更新数据库": { "main": [[{ "node": "等待 1s", "type": "main", "index": 0 }]] },
+    "等待 1s": { "main": [[{ "node": "逐条处理", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}

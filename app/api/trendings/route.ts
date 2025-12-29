@@ -30,7 +30,10 @@ export async function GET(request: NextRequest) {
   try {
     const where = {
       ...(status && { status }),
-      ...(type && { ip: { type } }),
+      ip: {
+        status: "APPROVED" as const,
+        ...(type && { type }),
+      },
     }
 
     const trendings = await db.trending.findMany({

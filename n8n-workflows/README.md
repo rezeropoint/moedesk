@@ -191,3 +191,81 @@ Webhook/Schedule 触发
 | `sop-01-anilist-sync.json` | AniList 新番同步（定时触发） |
 | `sop-01-anilist-sync-manual.json` | AniList 新番同步（Webhook 手动触发） |
 | `sop-02-popularity-refresh.json` | 热度全量刷新（每天 03:00） |
+| `sop-02-google-trends.json` | Google Trends 追踪（每天 04:00） |
+| `sop-02-reddit-monitor.json` | Reddit Karma 监测（每天 05:00） |
+
+---
+
+## 数据表关系
+
+```
+ip_reviews (IP 数据)
+    │
+    ├─ SOP-01 写入新番数据
+    │
+    └── trendings (热度追踪)
+            │
+            ├─ SOP-01 自动创建（高热度 ≥75分）
+            │
+            └── trending_history (热度历史)
+                    │
+                    ├─ SOP-01 写入首条记录
+                    └─ SOP-02 每日写入记录
+```
+
+---
+
+## 热度历史记录（TrendingHistory）
+
+### 数据来源
+
+| source | 说明 | 工作流 |
+|--------|------|--------|
+| `ANILIST` | AniList 热度/评分 | SOP-01, SOP-02 |
+| `REDDIT` | Reddit karma | sop-02-reddit-monitor |
+| `TWITTER` | Twitter/X 提及数 | 待开发 |
+| `GOOGLE_TRENDS` | Google 搜索趋势 | sop-02-google-trends |
+| `BILIBILI` | B站弹幕/播放 | 待开发 |
+
+### 字段说明
+
+| 字段 | 说明 |
+|------|------|
+| `value` | 归一化热度值 (0-100) |
+| `rawValue` | 原始值（如 popularity 原始数值） |
+| `recordedAt` | 记录时间（TimescaleDB 分区键） |
+
+### 变化率计算
+
+SOP-02 每日刷新时计算 7 日变化率：
+
+```sql
+change_rate = (current_value - old_value) / old_value * 100
+```
+
+- `old_value`: 7 天前最近的一条历史记录
+- 变化率存入 `trendings.redditKarmaChange`（暂用此字段存储 AniList 变化率）
+
+---
+
+## TimescaleDB 配置
+
+`trending_history` 表使用 TimescaleDB hypertable：
+
+- **分区间隔**: 7 天
+- **压缩策略**: 7 天后自动压缩
+- **保留策略**: 保留 1 年数据
+
+初始化 SQL（`init-db.sql`）：
+
+```sql
+-- 创建 hypertable
+SELECT create_hypertable('trending_history', 'recordedAt', chunk_time_interval => INTERVAL '7 days');
+
+-- 启用压缩
+ALTER TABLE trending_history SET (timescaledb.compress);
+SELECT add_compression_policy('trending_history', INTERVAL '7 days');
+
+-- 数据保留策略
+SELECT add_retention_policy('trending_history', INTERVAL '1 year');
+```

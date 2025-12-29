@@ -15,6 +15,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { IpTypeBadge } from "./ip-type-badge"
 import { ExternalLink, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -114,11 +119,19 @@ export function TrendingItem({ item }: TrendingItemProps) {
             <span>综合 <strong className="text-foreground">{item.ip.totalScore}</strong></span>
             <span>热度 <strong className="text-foreground">{item.ip.popularityScore ?? "-"}</strong></span>
             <span>评分 <strong className="text-foreground">{item.ip.ratingScore ?? "-"}</strong></span>
-            {item.ip.releaseDate && (
-              <span className="border-l border-border pl-3">开播 <strong className="text-foreground">{formatDate(item.ip.releaseDate)}</strong></span>
-            )}
-            {item.ip.endDate && (
-              <span>完结 <strong className="text-foreground">{formatDate(item.ip.endDate)}</strong></span>
+            {(item.ip.releaseDate || item.ip.endDate) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="border-l border-border pl-3 cursor-help">
+                    <strong className="text-foreground">
+                      {formatDate(item.ip.releaseDate)}{item.ip.releaseDate && item.ip.endDate && " - "}{formatDate(item.ip.endDate)}
+                    </strong>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {item.ip.releaseDate ? "开播" : ""}{item.ip.releaseDate && item.ip.endDate ? " - " : ""}{item.ip.endDate ? "完结" : ""}
+                </TooltipContent>
+              </Tooltip>
             )}
             <span className="border-l border-border pl-3">Reddit <strong className="text-orange-600">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
             <span>Twitter <strong className="text-blue-600">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
@@ -221,16 +234,10 @@ export function TrendingItem({ item }: TrendingItemProps) {
               </div>
 
               {/* 日期 */}
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                {item.ip.releaseDate && (
-                  <span>开播: {formatDate(item.ip.releaseDate)}</span>
-                )}
-                {item.ip.endDate && (
-                  <span>完结: {formatDate(item.ip.endDate)}</span>
-                )}
-                {!item.ip.releaseDate && !item.ip.endDate && (
-                  <span>日期: -</span>
-                )}
+              <div className="text-sm text-muted-foreground">
+                {item.ip.releaseDate && <span>开播: {formatDate(item.ip.releaseDate)}</span>}
+                {item.ip.endDate && <span className="ml-4">完结: {formatDate(item.ip.endDate)}</span>}
+                {!item.ip.releaseDate && !item.ip.endDate && <span>日期: -</span>}
               </div>
 
               {/* 简介 */}

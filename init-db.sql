@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS "trendings" (
     "googleTrend" INTEGER,
     "twitterMentions" INTEGER,
     "biliDanmaku" INTEGER,
+    "anilistChange" DOUBLE PRECISION,
     "googleTrendChange" DOUBLE PRECISION,
     "redditKarmaChange" DOUBLE PRECISION,
     "twitterChange" DOUBLE PRECISION,

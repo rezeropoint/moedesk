@@ -23,6 +23,7 @@ export default async function TrendingPage() {
   const [stats, trendings, pendingReviews, endingSoonAnime] = await Promise.all([
     getTrendingStats(),
     db.trending.findMany({
+      where: { ip: { status: "APPROVED" } },
       take: 20,
       orderBy: { ip: { totalScore: "desc" } },
       include: {

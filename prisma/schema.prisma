@@ -136,6 +136,7 @@ model Trending {
   biliDanmaku     Int?                             // B站弹幕数（可选）
 
   // 热度变化率（7天）
+  anilistChange       Float?                       // AniList 7日变化率
   googleTrendChange   Float?                       // Google Trends 7日变化率
   redditKarmaChange   Float?                       // Reddit 7日变化率
   twitterChange       Float?                       // Twitter 7日变化率

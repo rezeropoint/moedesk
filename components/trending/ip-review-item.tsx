@@ -17,6 +17,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IpTypeBadge } from "./ip-type-badge"
@@ -167,15 +172,17 @@ export function IpReviewItem({
             <span className="text-muted-foreground">
               评分: {item.ratingScore ?? "-"}
             </span>
-            {item.releaseDate && (
-              <span className="text-muted-foreground">
-                开播 {formatDate(item.releaseDate)}
-              </span>
-            )}
-            {item.endDate && (
-              <span className="text-muted-foreground">
-                完结 {formatDate(item.endDate)}
-              </span>
+            {(item.releaseDate || item.endDate) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-muted-foreground cursor-help">
+                    {formatDate(item.releaseDate)}{item.releaseDate && item.endDate && " - "}{formatDate(item.endDate)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {item.releaseDate ? "开播" : ""}{item.releaseDate && item.endDate ? " - " : ""}{item.endDate ? "完结" : ""}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
           {/* 标签和时间 */}
@@ -370,9 +377,10 @@ export function IpReviewItem({
 
               {/* 日期 */}
               <div className="text-sm text-muted-foreground">
-                <span>发布日期: {formatDate(item.releaseDate)}</span>
+                {item.releaseDate && <span>开播: {formatDate(item.releaseDate)}</span>}
+                {item.endDate && <span className="ml-4">完结: {formatDate(item.endDate)}</span>}
                 <span className="mx-2">|</span>
-                <span>入库时间: {formatDate(item.createdAt)}</span>
+                <span>入库: {formatDate(item.createdAt)}</span>
               </div>
 
               {/* 简介 */}

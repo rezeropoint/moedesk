@@ -104,7 +104,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  if (data.empty) continue;\n  \n  const anime = data.originalData;\n  const titleChinese = data.titleChinese;\n  const totalScore = data.totalScore; // 已在预处理中计算\n  \n  let releaseDate = 'NULL';\n  if (anime.startDate?.year) {\n    releaseDate = `'${anime.startDate.year}-${String(anime.startDate.month || 1).padStart(2, '0')}-${String(anime.startDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  let endDate = 'NULL';\n  if (anime.endDate?.year) {\n    endDate = `'${anime.endDate.year}-${String(anime.endDate.month || 1).padStart(2, '0')}-${String(anime.endDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  const escapeStr = (s) => s ? `'${String(s).replace(/'/g, \"''\")}'` : 'NULL';\n  const tagsArray = anime.genres?.length ? `ARRAY[${anime.genres.map(g => escapeStr(g)).join(',')}]::TEXT[]` : 'ARRAY[]::TEXT[]';\n  const ipId = `anilist_${anime.id}`;\n  \n  results.push({\n    json: {\n      sql_id: escapeStr(ipId),\n      sql_type: \"'ANIME'\",\n      sql_titleOriginal: escapeStr(anime.title.native || anime.title.romaji),\n      sql_titleChinese: escapeStr(titleChinese),\n      sql_titleEnglish: escapeStr(anime.title.english || anime.title.romaji),\n      sql_description: escapeStr(anime.description?.replace(/<[^>]*>/g, '').substring(0, 1000)),\n      sql_coverImage: escapeStr(anime.coverImage?.large),\n      sql_tags: tagsArray,\n      sql_releaseDate: releaseDate,\n      sql_endDate: endDate,\n      sql_popularityScore: anime.popularity || 0,\n      sql_ratingScore: anime.averageScore || 0,\n      sql_totalScore: totalScore,\n      sql_metadata: escapeStr(JSON.stringify({ anilistId: anime.id, studios: anime.studios?.nodes?.map(s => s.name) || [] })),\n      sql_externalUrls: escapeStr(JSON.stringify({ anilist: `https://anilist.co/anime/${anime.id}` })),\n      _stats: { total: items.length, manualReview: items.length, autoRejected: items[0]?.json?._stats?.autoRejected || 0 }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, _stats: { total: 0, manualReview: 0, autoRejected: 0 } } }];\n}\n\nreturn results;"
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const data = item.json;\n  if (data.empty) continue;\n  \n  const anime = data.originalData;\n  const titleChinese = data.titleChinese;\n  const totalScore = data.totalScore;\n  \n  let releaseDate = 'NULL';\n  if (anime.startDate?.year) {\n    releaseDate = `'${anime.startDate.year}-${String(anime.startDate.month || 1).padStart(2, '0')}-${String(anime.startDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  let endDate = 'NULL';\n  if (anime.endDate?.year) {\n    endDate = `'${anime.endDate.year}-${String(anime.endDate.month || 1).padStart(2, '0')}-${String(anime.endDate.day || 1).padStart(2, '0')}'`;\n  }\n  \n  const escapeStr = (s) => s ? `'${String(s).replace(/'/g, \"''\")}'` : 'NULL';\n  const tagsArray = anime.genres?.length ? `ARRAY[${anime.genres.map(g => escapeStr(g)).join(',')}]::TEXT[]` : 'ARRAY[]::TEXT[]';\n  const ipId = `anilist_${anime.id}`;\n  \n  results.push({\n    json: {\n      sql_id: escapeStr(ipId),\n      sql_type: \"'ANIME'\",\n      sql_titleOriginal: escapeStr(anime.title.native || anime.title.romaji),\n      sql_titleChinese: escapeStr(titleChinese),\n      sql_titleEnglish: escapeStr(anime.title.english || anime.title.romaji),\n      sql_description: escapeStr(anime.description?.replace(/<[^>]*>/g, '').substring(0, 1000)),\n      sql_coverImage: escapeStr(anime.coverImage?.large),\n      sql_tags: tagsArray,\n      sql_releaseDate: releaseDate,\n      sql_endDate: endDate,\n      sql_popularityScore: anime.popularity || 0,\n      sql_ratingScore: anime.averageScore || 0,\n      sql_totalScore: totalScore,\n      sql_metadata: escapeStr(JSON.stringify({ anilistId: anime.id, studios: anime.studios?.nodes?.map(s => s.name) || [] })),\n      sql_externalUrls: escapeStr(JSON.stringify({ anilist: `https://anilist.co/anime/${anime.id}` })),\n      _stats: { total: items.length, manualReview: items.length, autoRejected: items[0]?.json?._stats?.autoRejected || 0 }\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, _stats: { total: 0, manualReview: 0, autoRejected: 0 } } }];\n}\n\nreturn results;"
       },
       "id": "code-process",
       "name": "数据处理与评分",
@@ -112,20 +112,20 @@
       "typeVersion": 2,
       "position": [1100, 100]
     },
-        {
+    {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO ip_reviews (id, type, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", status, \"createdAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  'PENDING',\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleChinese\" = EXCLUDED.\"titleChinese\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\";",
+        "query": "=-- 写入/更新 ip_reviews 表（Trending 记录在审核通过时创建）\nINSERT INTO ip_reviews (id, type, \"titleOriginal\", \"titleChinese\", \"titleEnglish\", description, \"coverImage\", tags, \"releaseDate\", \"endDate\", \"popularityScore\", \"ratingScore\", \"totalScore\", metadata, \"externalUrls\", status, \"createdAt\")\nVALUES (\n  {{ $json.sql_id }},\n  {{ $json.sql_type }},\n  {{ $json.sql_titleOriginal }},\n  {{ $json.sql_titleChinese }},\n  {{ $json.sql_titleEnglish }},\n  {{ $json.sql_description }},\n  {{ $json.sql_coverImage }},\n  {{ $json.sql_tags }},\n  {{ $json.sql_releaseDate }},\n  {{ $json.sql_endDate }},\n  {{ $json.sql_popularityScore }},\n  {{ $json.sql_ratingScore }},\n  {{ $json.sql_totalScore }},\n  {{ $json.sql_metadata }},\n  {{ $json.sql_externalUrls }},\n  'PENDING',\n  NOW()\n)\nON CONFLICT (id) DO UPDATE SET\n  \"titleOriginal\" = EXCLUDED.\"titleOriginal\",\n  \"titleChinese\" = EXCLUDED.\"titleChinese\",\n  \"titleEnglish\" = EXCLUDED.\"titleEnglish\",\n  description = EXCLUDED.description,\n  \"coverImage\" = EXCLUDED.\"coverImage\",\n  tags = EXCLUDED.tags,\n  \"popularityScore\" = EXCLUDED.\"popularityScore\",\n  \"ratingScore\" = EXCLUDED.\"ratingScore\",\n  \"totalScore\" = EXCLUDED.\"totalScore\",\n  metadata = EXCLUDED.metadata,\n  \"externalUrls\" = EXCLUDED.\"externalUrls\";",
         "options": {}
       },
       "id": "postgres-reviews",
-      "name": "写入 ip_reviews 表",
+      "name": "写入数据库",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [1540, 40],
       "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
     },
-        {
+    {
       "parameters": {
         "jsCode": "const allItems = $input.all();\nconst stats = allItems[0]?.json?._stats || { total: 0, autoApproved: 0, manualReview: 0, autoRejected: 0 };\n\nreturn [{ json: { success: true, message: '定时同步完成', stats, timestamp: new Date().toISOString() } }];"
       },
@@ -150,8 +150,8 @@
     "查询 Bangumi": { "main": [[{ "node": "匹配中文标题", "type": "main", "index": 0 }]] },
     "匹配中文标题": { "main": [[{ "node": "等待 1s", "type": "main", "index": 0 }]] },
     "等待 1s": { "main": [[{ "node": "循环处理", "type": "main", "index": 0 }]] },
-    "数据处理与评分": { "main": [[{ "node": "写入 ip_reviews 表", "type": "main", "index": 0 }]] },
-    "写入 ip_reviews 表": { "main": [[{ "node": "生成统计", "type": "main", "index": 0 }]] }
+    "数据处理与评分": { "main": [[{ "node": "写入数据库", "type": "main", "index": 0 }]] },
+    "写入数据库": { "main": [[{ "node": "生成统计", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "staticData": null,

@@ -16,7 +16,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, (metadata->>'anilistId')::INT as anilist_id\nFROM ip_reviews\nWHERE status IN ('PENDING', 'APPROVED')\n  AND metadata->>'anilistId' IS NOT NULL\nORDER BY \"totalScore\" DESC",
+        "query": "SELECT ir.id, (ir.metadata->>'anilistId')::INT as anilist_id, t.id as trending_id\nFROM ip_reviews ir\nLEFT JOIN trendings t ON t.\"ipId\" = ir.id\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND ir.metadata->>'anilistId' IS NOT NULL\nORDER BY ir.\"totalScore\" DESC",
         "options": {}
       },
       "id": "postgres-query",
@@ -28,7 +28,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst BATCH_SIZE = 50;\nconst batches = [];\n\nfor (let i = 0; i < items.length; i += BATCH_SIZE) {\n  const batch = items.slice(i, i + BATCH_SIZE);\n  batches.push({\n    json: {\n      batchIndex: Math.floor(i / BATCH_SIZE),\n      ids: batch.map(item => item.json.anilist_id),\n      idMapping: batch.reduce((acc, item) => {\n        acc[item.json.anilist_id] = item.json.id;\n        return acc;\n      }, {})\n    }\n  });\n}\n\nif (batches.length === 0) {\n  return [{ json: { empty: true, message: '没有需要更新的 IP' } }];\n}\n\nreturn batches;"
+        "jsCode": "const items = $input.all();\nconst BATCH_SIZE = 50;\nconst batches = [];\n\nfor (let i = 0; i < items.length; i += BATCH_SIZE) {\n  const batch = items.slice(i, i + BATCH_SIZE);\n  batches.push({\n    json: {\n      batchIndex: Math.floor(i / BATCH_SIZE),\n      ids: batch.map(item => item.json.anilist_id),\n      idMapping: batch.reduce((acc, item) => {\n        acc[item.json.anilist_id] = {\n          ipId: item.json.id,\n          trendingId: item.json.trending_id || null\n        };\n        return acc;\n      }, {})\n    }\n  });\n}\n\nif (batches.length === 0) {\n  return [{ json: { empty: true, message: '没有需要更新的 IP' } }];\n}\n\nreturn batches;"
       },
       "id": "code-batch",
       "name": "分批处理",
@@ -86,7 +86,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const loopItem = $('循环批次').item;\nconst anilistRes = $input.first().json;\nconst idMapping = loopItem.json.idMapping;\n\nconst mediaList = anilistRes?.data?.Page?.media || [];\nconst results = [];\n\nfor (const media of mediaList) {\n  const ipId = idMapping[media.id];\n  if (!ipId) continue;\n  \n  const popScore = Math.min((media.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = media.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  results.push({\n    json: {\n      ipId,\n      anilistId: media.id,\n      popularityScore: media.popularity || 0,\n      ratingScore: media.averageScore || 0,\n      totalScore\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, batchIndex: loopItem.json.batchIndex } }];\n}\n\nreturn results;"
+        "jsCode": "const loopItem = $('循环批次').item;\nconst anilistRes = $input.first().json;\nconst idMapping = loopItem.json.idMapping;\n\nconst mediaList = anilistRes?.data?.Page?.media || [];\nconst results = [];\n\nfor (const media of mediaList) {\n  const mapping = idMapping[media.id];\n  if (!mapping) continue;\n  \n  const popScore = Math.min((media.popularity || 0) / 100000 * 100, 100);\n  const ratingScore = media.averageScore || 0;\n  const totalScore = Math.round(popScore * 0.6 + ratingScore * 0.4);\n  \n  // 归一化热度值 (0-100)\n  const normalizedPopularity = popScore;\n  \n  results.push({\n    json: {\n      ipId: mapping.ipId,\n      trendingId: mapping.trendingId,\n      anilistId: media.id,\n      popularityScore: media.popularity || 0,\n      ratingScore: media.averageScore || 0,\n      totalScore,\n      normalizedPopularity\n    }\n  });\n}\n\nif (results.length === 0) {\n  return [{ json: { empty: true, batchIndex: loopItem.json.batchIndex } }];\n}\n\nreturn results;"
       },
       "id": "code-process",
       "name": "处理响应数据",
@@ -118,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE ip_reviews\nSET \"popularityScore\" = {{ $json.popularityScore }},\n    \"ratingScore\" = {{ $json.ratingScore }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.ipId }}'",
+        "query": "=-- 1. 更新 ip_reviews 热度字段\nUPDATE ip_reviews\nSET \"popularityScore\" = {{ $json.popularityScore }},\n    \"ratingScore\" = {{ $json.ratingScore }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.ipId }}';\n\n{{ $json.trendingId ? `-- 2. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, value, \"rawValue\", \"recordedAt\")\nVALUES (gen_random_uuid(), '${$json.trendingId}', 'ANILIST', ${$json.normalizedPopularity}, ${$json.popularityScore}, NOW());\n\n-- 3. 计算 7 日变化率并更新 Trending\nWITH old_record AS (\n  SELECT value\n  FROM trending_history\n  WHERE \"trendingId\" = '${$json.trendingId}'\n    AND source = 'ANILIST'\n    AND \"recordedAt\" < NOW() - INTERVAL '7 days'\n  ORDER BY \"recordedAt\" DESC\n  LIMIT 1\n)\nUPDATE trendings\nSET \"anilistChange\" = (\n  SELECT CASE\n    WHEN old_record.value > 0 THEN ROUND(((${$json.normalizedPopularity} - old_record.value) / old_record.value * 100)::numeric, 2)\n    ELSE NULL\n  END\n  FROM old_record\n),\n\"updatedAt\" = NOW()\nWHERE id = '${$json.trendingId}';` : '-- 无 Trending 记录，跳过历史写入' }}",
         "options": {}
       },
       "id": "postgres-update",

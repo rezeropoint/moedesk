@@ -1,0 +1,185 @@
+{
+  "name": "SOP-02 Google Trends 追踪",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "triggerAtHour": 4 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "每天 04:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT t.id as trending_id, ir.id as ip_id, COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") as search_keyword, t.\"googleTrend\" as current_value\nFROM trendings t\nINNER JOIN ip_reviews ir ON ir.id = t.\"ipId\"\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") IS NOT NULL\nORDER BY ir.\"totalScore\" DESC\nLIMIT 100",
+        "options": {}
+      },
+      "id": "postgres-query",
+      "name": "查询待更新 IP",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [220, 0],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "empty-check",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-empty",
+      "name": "检查是否为空",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "loop-items",
+      "name": "逐条处理",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://serpapi.com/search.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "engine", "value": "google_trends" },
+            { "name": "q", "value": "={{ $json.search_keyword }}" },
+            { "name": "data_type", "value": "TIMESERIES" },
+            { "name": "date", "value": "today 1-m" },
+            { "name": "geo", "value": "US" },
+            { "name": "api_key", "value": "={{ $env.SERPAPI_KEY }}" }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "id": "serpapi-request",
+      "name": "SerpAPI Google Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const loopItem = $('逐条处理').item;\nconst serpRes = $input.first().json;\nconst trendingId = loopItem.json.trending_id;\nconst ipId = loopItem.json.ip_id;\nconst searchKeyword = loopItem.json.search_keyword;\n\n// 检查 API 响应\nif (serpRes.error || !serpRes.interest_over_time) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: serpRes.error || '无趋势数据'\n    }\n  }];\n}\n\n// 提取时间序列数据\nconst timelineData = serpRes.interest_over_time?.timeline_data || [];\n\nif (timelineData.length === 0) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: '时间线数据为空'\n    }\n  }];\n}\n\n// 获取最新的热度值（最后一个数据点）\nconst latestPoint = timelineData[timelineData.length - 1];\nconst latestValue = latestPoint.values?.[0]?.extracted_value || 0;\n\n// 归一化热度值 (Google Trends 返回 0-100)\nconst normalizedValue = latestValue;\n\n// 计算 7 天前的值用于变化率计算\nconst sevenDaysAgoIndex = Math.max(0, timelineData.length - 8);\nconst oldPoint = timelineData[sevenDaysAgoIndex];\nconst oldValue = oldPoint?.values?.[0]?.extracted_value || 0;\n\n// 计算 7 日变化率\nlet changeRate = null;\nif (oldValue > 0) {\n  changeRate = Math.round(((latestValue - oldValue) / oldValue * 100) * 100) / 100;\n}\n\nreturn [{\n  json: {\n    trendingId,\n    ipId,\n    searchKeyword,\n    googleTrend: latestValue,\n    normalizedValue,\n    oldValue,\n    googleTrendChange: changeRate,\n    metadata: {\n      geo: 'US',\n      date: 'today 1-m',\n      dataPoints: timelineData.length\n    }\n  }\n}];"
+      },
+      "id": "code-process",
+      "name": "处理响应数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-error",
+      "name": "检查处理结果",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=-- 1. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, value, \"rawValue\", metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'GOOGLE_TRENDS',\n  {{ $json.normalizedValue }},\n  {{ $json.googleTrend }},\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值和变化率\nUPDATE trendings\nSET\n  \"googleTrend\" = {{ $json.googleTrend }},\n  \"googleTrendChange\" = {{ $json.googleTrendChange !== null ? $json.googleTrendChange : 'NULL' }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}';",
+        "options": {}
+      },
+      "id": "postgres-update",
+      "name": "更新数据库",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1540, -100],
+      "credentials": { "postgres": { "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID", "name": "MoeDesk PostgreSQL" } }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "wait-node",
+      "name": "等待 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    message: 'Google Trends 数据更新完成',\n    source: 'GOOGLE_TRENDS',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "code-stats",
+      "name": "生成统计",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 0]
+    }
+  ],
+  "connections": {
+    "每天 04:00": { "main": [[{ "node": "查询待更新 IP", "type": "main", "index": 0 }]] },
+    "查询待更新 IP": { "main": [[{ "node": "检查是否为空", "type": "main", "index": 0 }]] },
+    "检查是否为空": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "逐条处理", "type": "main", "index": 0 }]
+      ]
+    },
+    "逐条处理": {
+      "main": [
+        [{ "node": "生成统计", "type": "main", "index": 0 }],
+        [{ "node": "SerpAPI Google Trends", "type": "main", "index": 0 }]
+      ]
+    },
+    "SerpAPI Google Trends": { "main": [[{ "node": "处理响应数据", "type": "main", "index": 0 }]] },
+    "处理响应数据": { "main": [[{ "node": "检查处理结果", "type": "main", "index": 0 }]] },
+    "检查处理结果": {
+      "main": [
+        [{ "node": "等待 2s", "type": "main", "index": 0 }],
+        [{ "node": "更新数据库", "type": "main", "index": 0 }]
+      ]
+    },
+    "更新数据库": { "main": [[{ "node": "等待 2s", "type": "main", "index": 0 }]] },
+    "等待 2s": { "main": [[{ "node": "逐条处理", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "pinData": {}
+}
