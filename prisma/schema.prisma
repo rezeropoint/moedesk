@@ -171,9 +171,10 @@ model TrendingHistory {
   trending    Trending       @relation(fields: [trendingId], references: [id], onDelete: Cascade)
 
   source      TrendingSource                      // 数据来源
+  region      String         @default("GLOBAL")  // 地区代码（GLOBAL/US/JP/GB/DE/FR 等）
   popularity  Int                                 // 热度值（如 AniList popularity）
   rating      Int?                                // 评分（如 AniList averageScore）
-  metadata    Json?                               // 额外数据（搜索关键词、地区等）
+  metadata    Json?                               // 额外数据（搜索关键词等）
 
   recordedAt  DateTime       @default(now())
 

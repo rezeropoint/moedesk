@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS "trending_history" (
     "id" TEXT NOT NULL,
     "trendingId" TEXT NOT NULL,
     "source" "TrendingSource" NOT NULL,
+    "region" TEXT NOT NULL DEFAULT 'GLOBAL',
     "popularity" INTEGER NOT NULL,
     "rating" INTEGER,
     "metadata" JSONB,

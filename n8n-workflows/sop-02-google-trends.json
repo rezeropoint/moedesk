@@ -16,7 +16,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT t.id as trending_id, ir.id as ip_id, COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") as search_keyword, t.\"googleTrend\" as current_value\nFROM trendings t\nINNER JOIN ip_reviews ir ON ir.id = t.\"ipId\"\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") IS NOT NULL\nORDER BY ir.\"totalScore\" DESC\nLIMIT 100",
+        "query": "SELECT t.id as trending_id, ir.id as ip_id, COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") as search_keyword\nFROM trendings t\nINNER JOIN ip_reviews ir ON ir.id = t.\"ipId\"\nWHERE ir.status IN ('PENDING', 'APPROVED')\n  AND COALESCE(ir.\"titleEnglish\", ir.\"titleOriginal\") IS NOT NULL\nORDER BY ir.\"totalScore\" DESC\nLIMIT 100",
         "options": {}
       },
       "id": "postgres-query",
@@ -69,7 +69,6 @@
             { "name": "q", "value": "={{ $json.search_keyword }}" },
             { "name": "data_type", "value": "TIMESERIES" },
             { "name": "date", "value": "today 1-m" },
-            { "name": "geo", "value": "US" },
             { "name": "api_key", "value": "={{ $env.SERPAPI_KEY }}" }
           ]
         },
@@ -87,7 +86,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const loopItem = $('逐条处理').item;\nconst serpRes = $input.first().json;\nconst trendingId = loopItem.json.trending_id;\nconst ipId = loopItem.json.ip_id;\nconst searchKeyword = loopItem.json.search_keyword;\n\n// 检查 API 响应\nif (serpRes.error || !serpRes.interest_over_time) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: serpRes.error || '无趋势数据'\n    }\n  }];\n}\n\n// 提取时间序列数据\nconst timelineData = serpRes.interest_over_time?.timeline_data || [];\n\nif (timelineData.length === 0) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: '时间线数据为空'\n    }\n  }];\n}\n\n// 获取最新的热度值（最后一个数据点）\nconst latestPoint = timelineData[timelineData.length - 1];\nconst latestValue = latestPoint.values?.[0]?.extracted_value || 0;\n\n// 归一化热度值 (Google Trends 返回 0-100)\nconst normalizedValue = latestValue;\n\n// 计算 7 天前的值用于变化率计算\nconst sevenDaysAgoIndex = Math.max(0, timelineData.length - 8);\nconst oldPoint = timelineData[sevenDaysAgoIndex];\nconst oldValue = oldPoint?.values?.[0]?.extracted_value || 0;\n\n// 计算 7 日变化率\nlet changeRate = null;\nif (oldValue > 0) {\n  changeRate = Math.round(((latestValue - oldValue) / oldValue * 100) * 100) / 100;\n}\n\nreturn [{\n  json: {\n    trendingId,\n    ipId,\n    searchKeyword,\n    googleTrend: latestValue,\n    normalizedValue,\n    oldValue,\n    googleTrendChange: changeRate,\n    metadata: {\n      geo: 'US',\n      date: 'today 1-m',\n      dataPoints: timelineData.length\n    }\n  }\n}];"
+        "jsCode": "const loopItem = $('逐条处理').item;\nconst serpRes = $input.first().json;\nconst trendingId = loopItem.json.trending_id;\nconst ipId = loopItem.json.ip_id;\nconst searchKeyword = loopItem.json.search_keyword;\n\n// 检查 API 响应\nif (serpRes.error || !serpRes.interest_over_time) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: serpRes.error || '无趋势数据'\n    }\n  }];\n}\n\n// 提取时间序列数据\nconst timelineData = serpRes.interest_over_time?.timeline_data || [];\n\nif (timelineData.length === 0) {\n  return [{\n    json: {\n      error: true,\n      trendingId,\n      ipId,\n      message: '时间线数据为空'\n    }\n  }];\n}\n\n// 获取最新的热度值（最后一个数据点，Google Trends 返回 0-100）\nconst latestPoint = timelineData[timelineData.length - 1];\nconst googleTrend = latestPoint.values?.[0]?.extracted_value || 0;\n\nreturn [{\n  json: {\n    trendingId,\n    ipId,\n    searchKeyword,\n    googleTrend,\n    metadata: {\n      geo: 'Worldwide',\n      date: 'today 1-m',\n      dataPoints: timelineData.length\n    }\n  }\n}];"
       },
       "id": "code-process",
       "name": "处理响应数据",
@@ -119,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=-- 1. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, value, \"rawValue\", metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'GOOGLE_TRENDS',\n  {{ $json.normalizedValue }},\n  {{ $json.googleTrend }},\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值和变化率\nUPDATE trendings\nSET\n  \"googleTrend\" = {{ $json.googleTrend }},\n  \"googleTrendChange\" = {{ $json.googleTrendChange !== null ? $json.googleTrendChange : 'NULL' }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}';",
+        "query": "=-- 1. 写入 TrendingHistory 记录（region 使用默认值 GLOBAL）\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'GOOGLE_TRENDS',\n  {{ $json.googleTrend }},\n  NULL,\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值\nUPDATE trendings\nSET\n  \"googleTrend\" = {{ $json.googleTrend }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}';",
         "options": {}
       },
       "id": "postgres-update",

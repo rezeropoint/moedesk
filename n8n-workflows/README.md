@@ -196,6 +196,21 @@ Webhook/Schedule 触发
 
 ---
 
+## API 配置
+
+### SerpAPI (Google Trends)
+
+1. 获取 API Key: https://serpapi.com/manage-api-key
+2. 在 n8n 中配置：
+   - 方式 A：Settings → Variables → 添加 `SERPAPI_KEY`
+   - 方式 B：直接编辑工作流中的 HTTP Request 节点，替换 `{{ $env.SERPAPI_KEY }}`
+
+### Reddit
+
+无需配置，使用公开 API（限制 100 QPM）。
+
+---
+
 ## 数据表关系
 
 ```
