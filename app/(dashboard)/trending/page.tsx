@@ -15,7 +15,7 @@ import type { TrendingListItem, IpType, TrendingStatus } from "@/types/trending"
 export const dynamic = "force-dynamic"
 
 export default async function TrendingPage() {
-  // 计算30天后的日期
+  // 计算未来30天的日期范围（即将完结的番剧）
   const now = new Date()
   const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
@@ -37,6 +37,7 @@ export default async function TrendingPage() {
             coverImage: true,
             tags: true,
             releaseDate: true,
+            endDate: true,
             popularityScore: true,
             ratingScore: true,
             totalScore: true,
@@ -58,6 +59,7 @@ export default async function TrendingPage() {
         coverImage: true,
         tags: true,
         releaseDate: true,
+        endDate: true,
         popularityScore: true,
         ratingScore: true,
         totalScore: true,
@@ -114,6 +116,7 @@ export default async function TrendingPage() {
         coverImage: t.ip.coverImage,
         tags: t.ip.tags,
         releaseDate: t.ip.releaseDate?.toISOString() ?? null,
+        endDate: t.ip.endDate?.toISOString() ?? null,
         popularityScore: t.ip.popularityScore,
         ratingScore: t.ip.ratingScore,
         totalScore: t.ip.totalScore,
@@ -146,6 +149,7 @@ export default async function TrendingPage() {
     coverImage: item.coverImage,
     tags: item.tags,
     releaseDate: item.releaseDate?.toISOString() ?? null,
+    endDate: item.endDate?.toISOString() ?? null,
     popularityScore: item.popularityScore,
     ratingScore: item.ratingScore,
     totalScore: item.totalScore,

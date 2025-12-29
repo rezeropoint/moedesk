@@ -108,12 +108,18 @@ export function TrendingItem({ item }: TrendingItemProps) {
             )}
           </div>
 
-          {/* AniList 评分 + 社媒热度 */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          {/* AniList 评分 + 社媒热度 + 日期 */}
+          <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
             <span className="text-blue-600">AniList</span>
             <span>综合 <strong className="text-foreground">{item.ip.totalScore}</strong></span>
             <span>热度 <strong className="text-foreground">{item.ip.popularityScore ?? "-"}</strong></span>
             <span>评分 <strong className="text-foreground">{item.ip.ratingScore ?? "-"}</strong></span>
+            {item.ip.releaseDate && (
+              <span className="border-l border-border pl-3">开播 <strong className="text-foreground">{formatDate(item.ip.releaseDate)}</strong></span>
+            )}
+            {item.ip.endDate && (
+              <span>完结 <strong className="text-foreground">{formatDate(item.ip.endDate)}</strong></span>
+            )}
             <span className="border-l border-border pl-3">Reddit <strong className="text-orange-600">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
             <span>Twitter <strong className="text-blue-600">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
             <span>Google <strong className="text-green-600">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
@@ -215,8 +221,16 @@ export function TrendingItem({ item }: TrendingItemProps) {
               </div>
 
               {/* 日期 */}
-              <div className="text-sm text-muted-foreground">
-                <span>发布日期: {formatDate(item.ip.releaseDate)}</span>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                {item.ip.releaseDate && (
+                  <span>开播: {formatDate(item.ip.releaseDate)}</span>
+                )}
+                {item.ip.endDate && (
+                  <span>完结: {formatDate(item.ip.endDate)}</span>
+                )}
+                {!item.ip.releaseDate && !item.ip.endDate && (
+                  <span>日期: -</span>
+                )}
               </div>
 
               {/* 简介 */}

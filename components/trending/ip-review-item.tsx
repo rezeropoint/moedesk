@@ -36,6 +36,7 @@ interface IpReviewItemProps {
     coverImage: string | null
     tags: string[]
     releaseDate: string | null
+    endDate: string | null
     popularityScore: number | null
     ratingScore: number | null
     totalScore: number
@@ -168,7 +169,12 @@ export function IpReviewItem({
             </span>
             {item.releaseDate && (
               <span className="text-muted-foreground">
-                📅 {formatDate(item.releaseDate)}
+                开播 {formatDate(item.releaseDate)}
+              </span>
+            )}
+            {item.endDate && (
+              <span className="text-muted-foreground">
+                完结 {formatDate(item.endDate)}
               </span>
             )}
           </div>

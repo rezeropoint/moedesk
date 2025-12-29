@@ -108,6 +108,7 @@ export interface TrendingListItem {
     coverImage: string | null
     tags: string[]
     releaseDate: string | null
+    endDate: string | null
     popularityScore: number | null
     ratingScore: number | null
     totalScore: number
