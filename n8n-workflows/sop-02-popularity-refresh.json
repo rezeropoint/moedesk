@@ -118,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=-- 1. 更新 entries 热度字段\nUPDATE entries\nSET \"popularityScore\" = {{ $json.popularity }},\n    \"ratingScore\" = {{ $json.rating }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.entry_id }}';\n\n{{ $json.trendingId ? `-- 2. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, \"recordedAt\")\nVALUES (gen_random_uuid(), '${$json.trendingId}', 'ANILIST', ${$json.popularity}, ${$json.rating}, NOW());\n\n-- 3. 更新 Trending 时间戳\nUPDATE trendings SET \"updatedAt\" = NOW() WHERE id = '${$json.trendingId}';` : '-- 无 Trending 记录，跳过历史写入' }}",
+        "query": "=-- 1. 更新 entries 热度字段（RETURNING 确保有输出以继续循环）\nUPDATE entries\nSET \"popularityScore\" = {{ $json.popularity }},\n    \"ratingScore\" = {{ $json.rating }},\n    \"totalScore\" = {{ $json.totalScore }}\nWHERE id = '{{ $json.entry_id }}'\nRETURNING id;\n\n{{ $json.trendingId ? `-- 2. 写入 TrendingHistory 记录\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, \"recordedAt\")\nVALUES (gen_random_uuid(), '${$json.trendingId}', 'ANILIST', ${$json.popularity}, ${$json.rating}, NOW());\n\n-- 3. 更新 Trending 时间戳\nUPDATE trendings SET \"updatedAt\" = NOW() WHERE id = '${$json.trendingId}' RETURNING id;` : '-- 无 Trending 记录，跳过历史写入' }}",
         "options": {}
       },
       "id": "postgres-update",

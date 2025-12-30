@@ -118,7 +118,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=-- 1. 写入 TrendingHistory 记录（region 使用默认值 GLOBAL）\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'GOOGLE_TRENDS',\n  {{ $json.googleTrend }},\n  NULL,\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值\nUPDATE trendings\nSET\n  \"googleTrend\" = {{ $json.googleTrend }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}';",
+        "query": "=-- 1. 写入 TrendingHistory 记录（region 使用默认值 GLOBAL）\nINSERT INTO trending_history (id, \"trendingId\", source, popularity, rating, metadata, \"recordedAt\")\nVALUES (\n  gen_random_uuid(),\n  '{{ $json.trendingId }}',\n  'GOOGLE_TRENDS',\n  {{ $json.googleTrend }},\n  NULL,\n  '{{ JSON.stringify($json.metadata).replace(/'/g, \"''\") }}'::jsonb,\n  NOW()\n);\n\n-- 2. 更新 Trending 表的热度值（RETURNING 确保有输出以继续循环）\nUPDATE trendings\nSET\n  \"googleTrend\" = {{ $json.googleTrend }},\n  \"updatedAt\" = NOW()\nWHERE id = '{{ $json.trendingId }}'\nRETURNING id, \"googleTrend\";",
         "options": {}
       },
       "id": "postgres-update",
