@@ -17,6 +17,11 @@ interface HistoryRawResult {
   rating: string | null
 }
 
+interface GlobalRangeResult {
+  source: string
+  max_value: string
+}
+
 export async function GET(request: NextRequest) {
   const session = await getSession()
 
@@ -76,6 +81,19 @@ export async function GET(request: NextRequest) {
     const dates = data.map((d) => d.date)
     const sources = [...new Set(data.map((d) => d.source))]
 
+    // 查询全局参考范围（各数据源的历史最大值）
+    const globalRangeResults = await db.$queryRaw<GlobalRangeResult[]>`
+      SELECT source::text as source, MAX(popularity) as max_value
+      FROM trending_history
+      WHERE popularity > 0
+      GROUP BY source
+    `
+
+    const globalRanges = globalRangeResults.map((row) => ({
+      source: row.source,
+      maxValue: Number(row.max_value),
+    }))
+
     return Response.json({
       data,
       meta: {
@@ -83,6 +101,7 @@ export async function GET(request: NextRequest) {
         endDate: dates.length > 0 ? dates[dates.length - 1] : null,
         sources,
       },
+      globalRanges,
     })
   } catch (error) {
     console.error("获取历史数据失败:", error)

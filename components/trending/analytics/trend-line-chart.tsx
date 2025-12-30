@@ -15,24 +15,25 @@ import {
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { normalizeHistoryData, computeSourceRanges } from "@/lib/normalize"
-import type { HistoryDataPoint, SelectedIp, SourceFilter } from "@/types/analytics"
+import { normalizeWithGlobalRanges, computeSourceRanges } from "@/lib/normalize"
+import type { HistoryDataPoint, SelectedIp, SourceFilter, GlobalSourceRange } from "@/types/analytics"
 
 interface TrendLineChartProps {
   data: HistoryDataPoint[]
+  globalRanges: GlobalSourceRange[]
   selectedIps: SelectedIp[]
   activeSource: SourceFilter
   onSourceChange: (source: SourceFilter) => void
   loading?: boolean
 }
 
-// 颜色配置 - IP 对比用（使用 CSS 变量，oklch 格式）
+// 颜色配置 - IP 对比用（直接使用 oklch 颜色值，与 globals.css 中 --chart-* 一致）
 const COLORS = [
-  "oklch(var(--chart-1))",
-  "oklch(var(--chart-2))",
-  "oklch(var(--chart-3))",
-  "oklch(var(--chart-4))",
-  "oklch(var(--chart-5))",
+  "oklch(0.646 0.222 41.116)",  // chart-1 (light)
+  "oklch(0.6 0.118 184.704)",   // chart-2 (light)
+  "oklch(0.398 0.07 227.392)",  // chart-3 (light)
+  "oklch(0.828 0.189 84.429)",  // chart-4 (light)
+  "oklch(0.769 0.188 70.08)",   // chart-5 (light)
 ]
 
 // 数据源颜色配置 - 综合视图用（品牌色，oklch 格式）
@@ -66,6 +67,7 @@ const ALL_SOURCES = ["ANILIST", "GOOGLE_TRENDS", "REDDIT", "TWITTER", "BILIBILI"
 
 export function TrendLineChart({
   data,
+  globalRanges,
   selectedIps,
   activeSource,
   onSourceChange,
@@ -75,7 +77,12 @@ export function TrendLineChart({
   const combinedChartData = useMemo(() => {
     if (!data.length || activeSource !== "ALL") return []
 
-    const normalized = normalizeHistoryData(data)
+    // 过滤掉 popularity 为 0 的数据（可能是未获取到）
+    const validData = data.filter((p) => p.popularity > 0)
+    if (!validData.length) return []
+
+    // 使用全局参考范围进行归一化
+    const normalized = normalizeWithGlobalRanges(validData, globalRanges)
     const dateMap = new Map<string, Record<string, number[]>>()
 
     for (const point of normalized) {
@@ -106,16 +113,18 @@ export function TrendLineChart({
         }
         return result
       })
-  }, [data, activeSource])
+  }, [data, activeSource, globalRanges])
 
   // 单源模式：原始值多 IP 对比
+  // 注意：后端 API 已按 source 参数过滤数据，此处无需再次过滤
   const singleSourceChartData = useMemo(() => {
     if (!data.length || activeSource === "ALL") return []
 
     const dateMap = new Map<string, Record<string, number>>()
 
     for (const point of data) {
-      if (point.source !== activeSource) continue
+      // 过滤掉 popularity 为 0 的数据（可能是未获取到）
+      if (point.popularity <= 0) continue
 
       if (!dateMap.has(point.date)) {
         dateMap.set(point.date, {})
@@ -177,7 +186,7 @@ export function TrendLineChart({
         </div>
         {activeSource === "ALL" && (
           <p className="text-xs text-muted-foreground mt-1">
-            综合模式：各数据源归一化到 0-100 后对比
+            综合模式：基于全局历史数据归一化到 0-100
           </p>
         )}
       </CardHeader>

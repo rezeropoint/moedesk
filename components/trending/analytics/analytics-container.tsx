@@ -16,6 +16,7 @@ import type {
   HistoryDataPoint,
   CompareItem,
   AnalyticsMetrics,
+  GlobalSourceRange,
 } from "@/types/analytics"
 
 interface AnalyticsContainerProps {
@@ -30,6 +31,7 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
 
   // 数据状态
   const [historyData, setHistoryData] = useState<HistoryDataPoint[]>([])
+  const [globalRanges, setGlobalRanges] = useState<GlobalSourceRange[]>([])
   const [compareData, setCompareData] = useState<CompareItem[]>([])
   const [metrics, setMetrics] = useState<AnalyticsMetrics | null>(null)
 
@@ -65,8 +67,9 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
         `/api/trendings/analytics/history?trendingIds=${trendingIds}&days=${timeRange}&source=${activeSource}`
       )
       if (historyRes.ok) {
-        const { data } = await historyRes.json()
+        const { data, globalRanges: ranges } = await historyRes.json()
         setHistoryData(data)
+        setGlobalRanges(ranges || [])
       }
     } catch (error) {
       console.error("获取历史数据失败:", error)
@@ -146,6 +149,7 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
         <div className="lg:col-span-2 space-y-6">
           <TrendLineChart
             data={historyData}
+            globalRanges={globalRanges}
             selectedIps={selectedIps}
             activeSource={activeSource}
             onSourceChange={setActiveSource}

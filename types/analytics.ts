@@ -28,6 +28,12 @@ export interface HistoryDataPoint {
   rating: number | null
 }
 
+/** 全局数据源参考范围 */
+export interface GlobalSourceRange {
+  source: string
+  maxValue: number
+}
+
 /** 历史数据 API 响应 */
 export interface HistoryResponse {
   data: HistoryDataPoint[]
@@ -36,6 +42,7 @@ export interface HistoryResponse {
     endDate: string
     sources: string[]
   }
+  globalRanges: GlobalSourceRange[]
 }
 
 // ============== 对比数据 ==============

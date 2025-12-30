@@ -1,4 +1,8 @@
-import type { HistoryDataPoint } from "@/types/analytics"
+import type { HistoryDataPoint, GlobalSourceRange } from "@/types/analytics"
+
+// 已在工作流中标准化到 0-100 的数据源，无需再归一化
+// 注意：AniList 工作流存储的是原始 popularity 值，需要归一化
+const PRE_NORMALIZED_SOURCES = ["GOOGLE_TRENDS"]
 
 /**
  * 数据源范围定义
@@ -62,6 +66,45 @@ export function normalizeHistoryData(
     const normalizedPopularity = range
       ? normalizeValue(point.popularity, range.min, range.max)
       : 50
+
+    return {
+      ...point,
+      normalizedPopularity,
+    }
+  })
+}
+
+/**
+ * 使用全局参考范围进行归一化
+ * - 已标准化的数据源（GOOGLE_TRENDS, ANILIST）：直接使用原值
+ * - 其他数据源：使用全局历史最大值归一化
+ */
+export function normalizeWithGlobalRanges(
+  data: HistoryDataPoint[],
+  globalRanges: GlobalSourceRange[]
+): (HistoryDataPoint & { normalizedPopularity: number })[] {
+  // 构建数据源 -> 最大值的映射
+  const rangeMap = Object.fromEntries(
+    globalRanges.map((r) => [r.source, r.maxValue])
+  )
+
+  return data.map((point) => {
+    let normalizedPopularity: number
+
+    if (PRE_NORMALIZED_SOURCES.includes(point.source)) {
+      // 已标准化的数据源，直接使用原值
+      normalizedPopularity = point.popularity
+    } else {
+      // 使用全局最大值归一化
+      const globalMax = rangeMap[point.source] || point.popularity
+      normalizedPopularity =
+        globalMax > 0
+          ? Math.min(
+              Math.round((point.popularity / globalMax) * 1000) / 10,
+              100
+            )
+          : 50
+    }
 
     return {
       ...point,
