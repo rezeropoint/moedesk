@@ -30,9 +30,11 @@ export async function getSession() {
 
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies()
+  // HTTP 环境部署时需设置 SECURE_COOKIE=false
+  const useSecureCookie = process.env.SECURE_COOKIE !== "false" && process.env.NODE_ENV === "production"
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: useSecureCookie,
     sameSite: "lax",
     maxAge: SESSION_MAX_AGE,
     path: "/",

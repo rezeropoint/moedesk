@@ -8,6 +8,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/moedesk
       - N8N_WEBHOOK_URL=http://n8n:5678
+      - SECURE_COOKIE=false
     depends_on:
       db:
         condition: service_healthy
