@@ -53,9 +53,10 @@ export const ApproveReq = z.object({
   // 系列关联
   seriesId: z.string().optional(),           // 选择现有系列
   createNewSeries: z.boolean().default(true), // 如果没有选择系列，是否创建新系列
+  seriesBaseName: z.string().min(1).max(200).optional(), // 覆盖自动解析的系列基础名称
   // 季度信息
   seasonNumber: z.number().min(1).optional(),   // 第几季
-  seasonLabel: z.string().optional(),            // 季度标签 ("S1", "剧场版", "OVA")
+  seasonLabel: z.string().max(50).optional(),   // 季度标签 ("S1", "剧场版", "OVA")
 })
 
 /** 审核拒绝请求 */
@@ -65,7 +66,11 @@ export const RejectReq = z.object({
 
 /** 更新 Entry 审核记录请求 */
 export const UpdateReq = z.object({
-  titleChinese: z.string().min(1, "中文标题不能为空").max(200, "标题过长"),
+  titleChinese: z.string().min(1, "中文标题不能为空").max(200, "标题过长").optional(),
+  // 关联关系修改（ADMIN 限制）
+  seriesId: z.string().optional().nullable(),
+  seasonNumber: z.number().min(1).optional().nullable(),
+  seasonLabel: z.string().max(50).optional().nullable(),
 })
 
 // 导出类型

@@ -4,7 +4,7 @@
  * 单个待审核项组件
  */
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -26,11 +26,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { IpTypeBadge } from "./ip-type-badge"
 import { SeriesSelector } from "./series-selector"
-import { Check, X, Loader2, Pencil, ClipboardCheck } from "lucide-react"
+import { Check, X, Loader2, Pencil, ClipboardCheck, AlertCircle } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import type { IpType, ReviewStatus } from "@/types/trending"
 import { formatDate } from "@/lib/utils"
+
+interface ParsedTitle {
+  baseName: string
+  seasonNumber: number | null
+  seasonLabel: string | null
+  confidence: number
+}
 
 interface EntryItemProps {
   item: {
@@ -72,6 +79,46 @@ export function EntryItem({
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null)
   const [seasonNumber, setSeasonNumber] = useState<string>("")
   const [seasonLabel, setSeasonLabel] = useState("")
+  // 标题解析状态
+  const [parsedTitle, setParsedTitle] = useState<ParsedTitle | null>(null)
+  const [seriesBaseName, setSeriesBaseName] = useState("")
+  const [isParsingTitle, setIsParsingTitle] = useState(false)
+
+  // 解析标题
+  const parseEntryTitle = useCallback(async () => {
+    setIsParsingTitle(true)
+    try {
+      // 优先解析中文标题，否则解析原标题
+      const titleToParse = item.titleChinese || item.titleOriginal
+      const response = await fetch("/api/entries/parse-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: titleToParse }),
+      })
+      if (response.ok) {
+        const { data } = await response.json()
+        setParsedTitle(data)
+        setSeriesBaseName(data.baseName)
+        if (data.seasonNumber && !seasonNumber) {
+          setSeasonNumber(String(data.seasonNumber))
+        }
+        if (data.seasonLabel && !seasonLabel) {
+          setSeasonLabel(data.seasonLabel)
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse title:", e)
+    } finally {
+      setIsParsingTitle(false)
+    }
+  }, [item.titleChinese, item.titleOriginal, seasonNumber, seasonLabel])
+
+  // 打开弹窗时解析标题
+  useEffect(() => {
+    if (detailDialogOpen && !selectedSeriesId && !parsedTitle) {
+      parseEntryTitle()
+    }
+  }, [detailDialogOpen, selectedSeriesId, parsedTitle, parseEntryTitle])
 
 
   const handleApprove = () => {
@@ -81,6 +128,9 @@ export function EntryItem({
       }
       if (selectedSeriesId) {
         body.seriesId = selectedSeriesId
+      } else if (seriesBaseName && seriesBaseName !== item.titleOriginal) {
+        // 如果用户修改了系列名称，传递给后端
+        body.seriesBaseName = seriesBaseName
       }
       if (seasonNumber) {
         body.seasonNumber = parseInt(seasonNumber, 10)
@@ -97,6 +147,9 @@ export function EntryItem({
       if (response.ok) {
         onApproved()
         router.refresh() // 刷新页面数据，更新热点列表
+      } else {
+        const data = await response.json()
+        alert(data.error || "审核失败")
       }
     })
   }
@@ -259,6 +312,9 @@ export function EntryItem({
           if (!open) {
             setIsEditing(false)
             setEditValue(item.titleChinese ?? "")
+            // 重置解析状态
+            setParsedTitle(null)
+            setSeriesBaseName("")
           }
         }}
       >
@@ -416,6 +472,39 @@ export function EntryItem({
               onChange={setSelectedSeriesId}
               suggestedTitle={item.titleOriginal}
             />
+
+            {/* 系列名称编辑（仅在不选择现有系列时显示） */}
+            {!selectedSeriesId && (
+              <div className="space-y-2">
+                <Label htmlFor="series-base-name" className="flex items-center gap-2">
+                  系列名称
+                  {isParsingTitle && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                  {parsedTitle && parsedTitle.confidence < 0.9 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        解析置信度较低，建议核实系列名称
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </Label>
+                <Input
+                  id="series-base-name"
+                  value={seriesBaseName}
+                  onChange={(e) => setSeriesBaseName(e.target.value)}
+                  placeholder="如: 鬼灭之刃"
+                />
+                {parsedTitle && seriesBaseName !== (item.titleChinese || item.titleOriginal) && (
+                  <p className="text-xs text-muted-foreground">
+                    原标题: {item.titleChinese || item.titleOriginal}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* 季度信息 */}
             <div className="grid grid-cols-2 gap-4">

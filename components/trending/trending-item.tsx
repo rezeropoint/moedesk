@@ -21,7 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { IpTypeBadge } from "./ip-type-badge"
-import { ExternalLink, Sparkles } from "lucide-react"
+import { SeriesEntriesManager } from "./series-entries-manager"
+import { ExternalLink, Sparkles, Settings } from "lucide-react"
 import { cn, formatDate } from "@/lib/utils"
 import type { TrendingListItem } from "@/types/trending"
 
@@ -161,19 +162,21 @@ export function TrendingItem({ item }: TrendingItemProps) {
               <span className="truncate">{item.series.titleOriginal}</span>
               <IpTypeBadge type={item.series.type} />
             </DialogTitle>
-            <DialogDescription className="space-y-1">
-              {item.series.titleChinese && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground shrink-0">中文:</span>
-                  <span className="text-foreground">{item.series.titleChinese}</span>
-                </div>
-              )}
-              {item.series.titleEnglish && (
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground shrink-0">英文:</span>
-                  <span>{item.series.titleEnglish}</span>
-                </div>
-              )}
+            <DialogDescription asChild>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                {item.series.titleChinese && (
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0">中文:</span>
+                    <span className="text-foreground">{item.series.titleChinese}</span>
+                  </div>
+                )}
+                {item.series.titleEnglish && (
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0">英文:</span>
+                    <span>{item.series.titleEnglish}</span>
+                  </div>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
 
@@ -303,6 +306,20 @@ export function TrendingItem({ item }: TrendingItemProps) {
                 <div className="text-xs text-brand-bilibili">B站</div>
               </div>
             </div>
+          </div>
+
+          {/* 管理条目 */}
+          <div className="mt-4 pt-4 border-t flex justify-end">
+            <SeriesEntriesManager
+              seriesId={item.series.id}
+              seriesTitle={item.series.titleChinese || item.series.titleOriginal}
+              trigger={
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-1" />
+                  管理条目
+                </Button>
+              }
+            />
           </div>
         </DialogContent>
       </Dialog>

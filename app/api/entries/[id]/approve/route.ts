@@ -7,6 +7,11 @@ import { NextRequest } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { ApproveReq } from "../../schema"
+import {
+  parseTitle,
+  cleanSearchKeyword,
+  generateSearchKeywords,
+} from "@/lib/title-parser"
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -46,26 +51,56 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     await db.$transaction(async (tx) => {
-      const { seriesId, createNewSeries, seasonNumber, seasonLabel, reviewNote } = parsed.data
+      const {
+        seriesId,
+        createNewSeries,
+        seriesBaseName,
+        seasonNumber,
+        seasonLabel,
+        reviewNote,
+      } = parsed.data
+
+      // 解析标题获取基础名称和季度信息
+      const parsedTitle = parseTitle(entry.titleOriginal)
+      const parsedChinese = entry.titleChinese
+        ? parseTitle(entry.titleChinese)
+        : null
+
+      // 使用用户提供的值或解析结果
+      const finalBaseName = seriesBaseName || parsedTitle.baseName
+      const finalSeasonNumber =
+        seasonNumber ?? parsedChinese?.seasonNumber ?? parsedTitle.seasonNumber
+      const finalSeasonLabel =
+        seasonLabel ||
+        parsedChinese?.seasonLabel ||
+        parsedTitle.seasonLabel ||
+        null
 
       let targetSeriesId = seriesId
 
       // 如果没有选择系列且需要创建新系列
       if (!targetSeriesId && createNewSeries) {
-        // 创建新系列
+        // 生成清理后的搜索关键词
+        const searchKeywords = generateSearchKeywords(
+          finalBaseName,
+          entry.titleChinese ? cleanSearchKeyword(entry.titleChinese) : null,
+          entry.titleEnglish ? cleanSearchKeyword(entry.titleEnglish) : null
+        )
+
+        // 创建新系列（使用基础名称而非完整标题）
         const newSeries = await tx.series.create({
           data: {
-            titleOriginal: entry.titleOriginal,
-            titleChinese: entry.titleChinese,
-            titleEnglish: entry.titleEnglish,
+            titleOriginal: finalBaseName,
+            titleChinese: entry.titleChinese
+              ? cleanSearchKeyword(entry.titleChinese)
+              : null,
+            titleEnglish: entry.titleEnglish
+              ? cleanSearchKeyword(entry.titleEnglish)
+              : null,
             type: entry.type,
             coverImage: entry.coverImage,
             tags: entry.tags,
-            searchKeywords: [
-              entry.titleOriginal,
-              ...(entry.titleChinese ? [entry.titleChinese] : []),
-              ...(entry.titleEnglish ? [entry.titleEnglish] : []),
-            ],
+            searchKeywords,
             totalSeasons: 1,
             aggregatedScore: entry.totalScore,
           },
@@ -80,6 +115,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
           },
         })
       } else if (targetSeriesId) {
+        // 季度编号检重
+        if (finalSeasonNumber) {
+          const existingEntry = await tx.entry.findFirst({
+            where: {
+              seriesId: targetSeriesId,
+              seasonNumber: finalSeasonNumber,
+              status: "APPROVED",
+              id: { not: id },
+            },
+          })
+          if (existingEntry) {
+            throw new Error(`该系列已存在第 ${finalSeasonNumber} 季`)
+          }
+        }
+
         // 关联到现有系列，更新统计
         const existingSeasons = await tx.entry.count({
           where: { seriesId: targetSeriesId, status: "APPROVED" },
@@ -88,7 +138,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           where: { seriesId: targetSeriesId, status: "APPROVED" },
           select: { totalScore: true },
         })
-        const totalScore = existingEntries.reduce((sum, e) => sum + e.totalScore, 0) + entry.totalScore
+        const totalScore =
+          existingEntries.reduce((sum, e) => sum + e.totalScore, 0) +
+          entry.totalScore
         const avgScore = Math.round(totalScore / (existingSeasons + 1))
 
         await tx.series.update({
@@ -111,14 +163,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
           reviewedAt: new Date(),
           reviewNote,
           seriesId: targetSeriesId,
-          seasonNumber,
-          seasonLabel,
+          seasonNumber: finalSeasonNumber,
+          seasonLabel: finalSeasonLabel,
         },
       })
     })
 
     return Response.json({ data: { success: true } })
   } catch (error) {
+    // 处理季度检重错误
+    if (error instanceof Error && error.message.includes("已存在")) {
+      return Response.json({ error: error.message }, { status: 400 })
+    }
     console.error("Failed to approve entry:", error)
     return Response.json({ error: "审核通过失败" }, { status: 500 })
   }

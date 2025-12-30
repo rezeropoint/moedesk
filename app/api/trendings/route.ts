@@ -54,10 +54,10 @@ export async function GET(request: NextRequest) {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
-            // 获取该系列得分最高的 Entry 的 AniList 数据和日期
+            // 获取该系列最新季的 Entry 的日期和 AniList 数据
             entries: {
               where: { status: "APPROVED" },
-              orderBy: { totalScore: "desc" },
+              orderBy: { releaseDate: "desc" },
               take: 1,
               select: {
                 popularityScore: true,
