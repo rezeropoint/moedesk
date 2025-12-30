@@ -312,7 +312,11 @@ export function TrendingItem({ item }: TrendingItemProps) {
           <div className="mt-4 pt-4 border-t flex justify-end">
             <SeriesEntriesManager
               seriesId={item.series.id}
-              seriesTitle={item.series.titleChinese || item.series.titleOriginal}
+              series={{
+                id: item.series.id,
+                titleOriginal: item.series.titleOriginal,
+                titleChinese: item.series.titleChinese,
+              }}
               trigger={
                 <Button variant="outline" size="sm">
                   <Settings className="h-4 w-4 mr-1" />
