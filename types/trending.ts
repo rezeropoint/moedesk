@@ -52,6 +52,22 @@ export interface SeriesSeason {
   coverImage: string | null
 }
 
+/** 季度条目详情（用于热点列表展开） */
+export interface SeasonEntry {
+  id: string
+  seasonNumber: number | null
+  seasonLabel: string | null
+  titleOriginal: string
+  titleChinese: string | null
+  coverImage: string | null
+  releaseDate: string | null
+  endDate: string | null
+  // AniList 季度级数据
+  popularityScore: number | null
+  ratingScore: number | null
+  totalScore: number
+}
+
 /** IP 基础信息 */
 export interface IpBase {
   id: string
@@ -153,6 +169,8 @@ export interface TrendingListItem {
     /** 最新一季的完结日期 */
     endDate: string | null
   }
+  /** 系列下所有已审核的季度条目 */
+  entries: SeasonEntry[]
   totalScore: number
   growthRate: number
   primarySource: string

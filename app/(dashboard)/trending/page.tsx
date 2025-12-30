@@ -40,16 +40,22 @@ export default async function TrendingPage() {
             totalSeasons: true,
             aggregatedScore: true,
             searchKeywords: true,
-            // 获取该系列得分最高的 Entry 的 AniList 数据和日期
+            // 获取该系列所有已审核的 Entry（季度数据）
             entries: {
               where: { status: "APPROVED" },
-              orderBy: { totalScore: "desc" },
-              take: 1,
+              orderBy: [{ seasonNumber: "asc" }, { releaseDate: "desc" }],
               select: {
-                popularityScore: true,
-                ratingScore: true,
+                id: true,
+                seasonNumber: true,
+                seasonLabel: true,
+                titleOriginal: true,
+                titleChinese: true,
+                coverImage: true,
                 releaseDate: true,
                 endDate: true,
+                popularityScore: true,
+                ratingScore: true,
+                totalScore: true,
               },
             },
           },
@@ -111,7 +117,14 @@ export default async function TrendingPage() {
     if (t.googleTrend) sources.push("Google")
     if (t.biliDanmaku) sources.push("Bilibili")
 
-    const latestEntry = t.series.entries[0]
+    // 最新一季用于显示系列级日期
+    const latestEntry = t.series.entries[t.series.entries.length - 1]
+    // 最高分季度用于显示 AniList 数据
+    const topScoreEntry = t.series.entries.reduce(
+      (max, e) => ((e.totalScore ?? 0) > (max?.totalScore ?? 0) ? e : max),
+      t.series.entries[0]
+    )
+
     return {
       id: t.id,
       rank: index + 1,
@@ -130,6 +143,20 @@ export default async function TrendingPage() {
         releaseDate: latestEntry?.releaseDate?.toISOString() ?? null,
         endDate: latestEntry?.endDate?.toISOString() ?? null,
       },
+      // 所有已审核的季度条目
+      entries: t.series.entries.map((e) => ({
+        id: e.id,
+        seasonNumber: e.seasonNumber,
+        seasonLabel: e.seasonLabel,
+        titleOriginal: e.titleOriginal,
+        titleChinese: e.titleChinese,
+        coverImage: e.coverImage,
+        releaseDate: e.releaseDate?.toISOString() ?? null,
+        endDate: e.endDate?.toISOString() ?? null,
+        popularityScore: e.popularityScore,
+        ratingScore: e.ratingScore,
+        totalScore: e.totalScore ?? 0,
+      })),
       totalScore: t.series.aggregatedScore,
       growthRate: Math.floor((t.series.aggregatedScore % 300) + 50),
       primarySource: sources[0] || "AniList",
@@ -140,8 +167,8 @@ export default async function TrendingPage() {
       heatData: {
         // AniList 数据（从最高分 Entry 获取）
         anilistScore: t.series.aggregatedScore,
-        anilistPopularity: latestEntry?.popularityScore ?? null,
-        anilistRating: latestEntry?.ratingScore ?? null,
+        anilistPopularity: topScoreEntry?.popularityScore ?? null,
+        anilistRating: topScoreEntry?.ratingScore ?? null,
         // 社媒热度
         redditKarma: t.redditKarma,
         googleTrend: t.googleTrend,
