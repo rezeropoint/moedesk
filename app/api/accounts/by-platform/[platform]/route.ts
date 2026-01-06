@@ -55,6 +55,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       accountName: true,
       avatarUrl: true,
       status: true,
+      accountId: true,  // 用于判断 YouTube 是否有频道
     },
   })
 
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       platform: a.platform,
       accountName: a.accountName,
       avatarUrl: a.avatarUrl,
+      // YouTube 账号需要判断是否有频道
+      hasChannel: a.platform === "YOUTUBE" ? !!a.accountId : true,
     })),
   })
 }

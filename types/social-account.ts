@@ -65,6 +65,8 @@ export interface AccountBrief {
   platform: PublishPlatform
   accountName: string
   avatarUrl: string | null
+  /** YouTube 专用：是否已创建频道 */
+  hasChannel?: boolean
 }
 
 // ============================================================================

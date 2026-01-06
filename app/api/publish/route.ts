@@ -78,6 +78,10 @@ export async function GET(request: NextRequest) {
       title: pc.title,
       description: pc.description,
       hashtags: pc.hashtags,
+      youtubePrivacyStatus: pc.youtubePrivacyStatus,
+      youtubeCategoryId: pc.youtubeCategoryId,
+      youtubePlaylistIds: pc.youtubePlaylistIds,
+      youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
     })),
     records: t.records.map((r) => ({
       id: r.id,
@@ -158,6 +162,11 @@ export async function POST(request: NextRequest) {
             title: content?.title || null,
             description: content?.description || null,
             hashtags: content?.hashtags || [],
+            // YouTube 专属配置
+            youtubePrivacyStatus: content?.youtubePrivacyStatus || null,
+            youtubeCategoryId: content?.youtubeCategoryId || null,
+            youtubePlaylistIds: content?.youtubePlaylistIds || [],
+            youtubeThumbnailUrl: content?.youtubeThumbnailUrl || null,
           }
         }),
       },
@@ -191,6 +200,10 @@ export async function POST(request: NextRequest) {
           title: pc.title,
           description: pc.description,
           hashtags: pc.hashtags,
+          youtubePrivacyStatus: pc.youtubePrivacyStatus,
+          youtubeCategoryId: pc.youtubeCategoryId,
+          youtubePlaylistIds: pc.youtubePlaylistIds,
+          youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
         })),
         records: [],
       },

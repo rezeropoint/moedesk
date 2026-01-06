@@ -371,6 +371,12 @@ model PublishPlatformContent {
   description String?                               // 平台特定描述
   hashtags    String[]                              // Hashtag 列表
 
+  // YouTube 专属配置
+  youtubePrivacyStatus   String?   @map("youtube_privacy_status")   // public/unlisted/private
+  youtubeCategoryId      String?   @map("youtube_category_id")      // 视频分类 ID
+  youtubePlaylistIds     String[]  @default([]) @map("youtube_playlist_ids")  // 播放列表 ID 列表
+  youtubeThumbnailUrl    String?   @map("youtube_thumbnail_url")    // 缩略图 URL
+
   @@unique([taskId, platform])
   @@map("publish_platform_contents")
 }

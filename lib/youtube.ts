@@ -276,3 +276,105 @@ export async function refreshChannelStats(accountId: string): Promise<boolean> {
     return false
   }
 }
+
+// ============================================================================
+// YouTube 视频分类
+// ============================================================================
+
+export interface YouTubeCategory {
+  id: string
+  title: string
+}
+
+/**
+ * 获取 YouTube 视频分类列表
+ * @param regionCode 地区代码，默认 US
+ * @returns 可分配的分类列表
+ */
+export async function getYouTubeCategories(
+  regionCode = "US"
+): Promise<YouTubeCategory[]> {
+  const apiKey = process.env.GOOGLE_API_KEY
+  if (!apiKey) {
+    console.error("[YouTube] 缺少 GOOGLE_API_KEY")
+    return []
+  }
+
+  try {
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/videoCategories?part=snippet&regionCode=${regionCode}&key=${apiKey}`
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("[YouTube] 获取分类失败:", errorData)
+      return []
+    }
+
+    const data = await response.json()
+    return (data.items || [])
+      .filter((item: { snippet: { assignable: boolean } }) => item.snippet.assignable)
+      .map((item: { id: string; snippet: { title: string } }) => ({
+        id: item.id,
+        title: item.snippet.title,
+      }))
+  } catch (error) {
+    console.error("[YouTube] 获取分类异常:", error)
+    return []
+  }
+}
+
+// ============================================================================
+// YouTube 播放列表
+// ============================================================================
+
+export interface YouTubePlaylist {
+  id: string
+  title: string
+  thumbnailUrl?: string
+  itemCount: number
+}
+
+/**
+ * 获取用户的 YouTube 播放列表
+ * @param accessToken 有效的 access token
+ * @returns 播放列表
+ */
+export async function getYouTubePlaylists(
+  accessToken: string
+): Promise<YouTubePlaylist[]> {
+  try {
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/playlists?part=snippet,contentDetails&mine=true&maxResults=50`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("[YouTube] 获取播放列表失败:", errorData)
+      return []
+    }
+
+    const data = await response.json()
+    return (data.items || []).map(
+      (item: {
+        id: string
+        snippet: {
+          title: string
+          thumbnails?: { default?: { url: string } }
+        }
+        contentDetails?: { itemCount?: number }
+      }) => ({
+        id: item.id,
+        title: item.snippet.title,
+        thumbnailUrl: item.snippet.thumbnails?.default?.url,
+        itemCount: item.contentDetails?.itemCount || 0,
+      })
+    )
+  } catch (error) {
+    console.error("[YouTube] 获取播放列表异常:", error)
+    return []
+  }
+}

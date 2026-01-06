@@ -32,7 +32,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     )
   }
 
-  const { platform, title, description, hashtags } = parsed.data
+  const {
+    platform,
+    title,
+    description,
+    hashtags,
+    youtubePrivacyStatus,
+    youtubeCategoryId,
+    youtubePlaylistIds,
+    youtubeThumbnailUrl,
+  } = parsed.data
 
   // 验证任务存在且状态允许编辑
   const task = await db.publishTask.findUnique({
@@ -66,6 +75,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       ...(title !== undefined && { title: title || null }),
       ...(description !== undefined && { description: description || null }),
       ...(hashtags !== undefined && { hashtags }),
+      // YouTube 专属配置
+      ...(youtubePrivacyStatus !== undefined && { youtubePrivacyStatus: youtubePrivacyStatus || null }),
+      ...(youtubeCategoryId !== undefined && { youtubeCategoryId: youtubeCategoryId || null }),
+      ...(youtubePlaylistIds !== undefined && { youtubePlaylistIds }),
+      ...(youtubeThumbnailUrl !== undefined && { youtubeThumbnailUrl: youtubeThumbnailUrl || null }),
     },
     create: {
       taskId: id,
@@ -73,6 +87,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       title: title || null,
       description: description || null,
       hashtags: hashtags || [],
+      // YouTube 专属配置
+      youtubePrivacyStatus: youtubePrivacyStatus || null,
+      youtubeCategoryId: youtubeCategoryId || null,
+      youtubePlaylistIds: youtubePlaylistIds || [],
+      youtubeThumbnailUrl: youtubeThumbnailUrl || null,
     },
   })
 
@@ -84,6 +103,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       title: platformContent.title,
       description: platformContent.description,
       hashtags: platformContent.hashtags,
+      // YouTube 专属配置
+      youtubePrivacyStatus: platformContent.youtubePrivacyStatus,
+      youtubeCategoryId: platformContent.youtubeCategoryId,
+      youtubePlaylistIds: platformContent.youtubePlaylistIds,
+      youtubeThumbnailUrl: platformContent.youtubeThumbnailUrl,
     },
   })
 }

@@ -5,10 +5,19 @@ import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,11 +42,19 @@ import {
   Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { PublishTask, PublishPlatform, PublishMode } from "@/types/publish"
+import type {
+  PublishTask,
+  PublishPlatform,
+  PublishMode,
+  YouTubePrivacyStatus,
+  YouTubeCategory,
+  YouTubePlaylist,
+} from "@/types/publish"
 import {
   PLATFORM_CONFIGS,
   STATUS_CONFIGS,
   MODE_CONFIGS,
+  YOUTUBE_PRIVACY_CONFIGS,
 } from "@/types/publish"
 
 interface PublishTaskDetailProps {
@@ -68,6 +85,11 @@ interface PlatformContentForm {
   title: string
   description: string
   hashtags: string
+  // YouTube 专属配置
+  youtubePrivacyStatus: YouTubePrivacyStatus
+  youtubeCategoryId: string
+  youtubePlaylistIds: string[]
+  youtubeThumbnailUrl: string
 }
 
 export function PublishTaskDetail({
@@ -85,6 +107,12 @@ export function PublishTaskDetail({
     Record<string, PlatformContentForm>
   >({})
 
+  // YouTube 分类和播放列表
+  const [youtubeCategories, setYoutubeCategories] = useState<YouTubeCategory[]>([])
+  const [youtubePlaylists, setYoutubePlaylists] = useState<YouTubePlaylist[]>([])
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false)
+
   // 任务变化时初始化表单状态
   useEffect(() => {
     if (task) {
@@ -97,12 +125,44 @@ export function PublishTaskDetail({
           title: content?.title || "",
           description: content?.description || "",
           hashtags: content?.hashtags.join(" ") || "",
+          // YouTube 专属配置
+          youtubePrivacyStatus: (content?.youtubePrivacyStatus as YouTubePrivacyStatus) || "public",
+          youtubeCategoryId: content?.youtubeCategoryId || "",
+          youtubePlaylistIds: content?.youtubePlaylistIds || [],
+          youtubeThumbnailUrl: content?.youtubeThumbnailUrl || "",
         }
       }
       setPlatformForms(forms)
       setActiveTab(task.platforms[0] || "")
     }
   }, [task])
+
+  // 加载 YouTube 分类（当任务包含 YouTube 平台时）
+  useEffect(() => {
+    if (task?.platforms.includes("YOUTUBE") && youtubeCategories.length === 0) {
+      setIsLoadingCategories(true)
+      fetch("/api/youtube/categories")
+        .then((res) => res.json())
+        .then((data) => setYoutubeCategories(data.data || []))
+        .catch(console.error)
+        .finally(() => setIsLoadingCategories(false))
+    }
+  }, [task?.platforms, youtubeCategories.length])
+
+  // 加载 YouTube 播放列表（当任务包含 YouTube 平台且有关联账号时）
+  useEffect(() => {
+    if (task?.platforms.includes("YOUTUBE") && task.accounts?.length) {
+      const youtubeAccount = task.accounts.find((a) => a.platform === "YOUTUBE")
+      if (youtubeAccount) {
+        setIsLoadingPlaylists(true)
+        fetch(`/api/youtube/playlists?accountId=${youtubeAccount.id}`)
+          .then((res) => res.json())
+          .then((data) => setYoutubePlaylists(data.data || []))
+          .catch(console.error)
+          .finally(() => setIsLoadingPlaylists(false))
+      }
+    }
+  }, [task?.platforms, task?.accounts])
 
   if (!task) {
     return (
@@ -160,6 +220,13 @@ export function PublishTaskDetail({
               .split(/\s+/)
               .filter(Boolean)
               .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`)),
+            // YouTube 专属配置
+            ...(platform === "YOUTUBE" && {
+              youtubePrivacyStatus: form.youtubePrivacyStatus || null,
+              youtubeCategoryId: form.youtubeCategoryId || null,
+              youtubePlaylistIds: form.youtubePlaylistIds || [],
+              youtubeThumbnailUrl: form.youtubeThumbnailUrl || null,
+            }),
           }),
         })
       }
@@ -410,6 +477,159 @@ export function PublishTaskDetail({
                           最多 {config.maxHashtags} 个标签（以空格分隔）
                         </p>
                       </div>
+
+                      {/* YouTube 高级设置 */}
+                      {platform === "YOUTUBE" && (
+                        <div className="space-y-4 pt-4 border-t">
+                          <h4 className="text-sm font-medium">YouTube 高级设置</h4>
+
+                          {/* 隐私状态 */}
+                          <div className="space-y-2">
+                            <Label>隐私状态</Label>
+                            <Select
+                              value={form.youtubePrivacyStatus}
+                              onValueChange={(v) =>
+                                setPlatformForms((prev) => ({
+                                  ...prev,
+                                  [platform]: {
+                                    ...prev[platform],
+                                    youtubePrivacyStatus: v as YouTubePrivacyStatus,
+                                  },
+                                }))
+                              }
+                              disabled={!isEditable}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(Object.keys(YOUTUBE_PRIVACY_CONFIGS) as YouTubePrivacyStatus[]).map(
+                                  (status) => {
+                                    const privacyConfig = YOUTUBE_PRIVACY_CONFIGS[status]
+                                    return (
+                                      <SelectItem key={status} value={status}>
+                                        {privacyConfig.label} - {privacyConfig.description}
+                                      </SelectItem>
+                                    )
+                                  }
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* 视频分类 */}
+                          <div className="space-y-2">
+                            <Label>视频分类</Label>
+                            {isLoadingCategories ? (
+                              <Skeleton className="h-10 w-full" />
+                            ) : (
+                              <Select
+                                value={form.youtubeCategoryId}
+                                onValueChange={(v) =>
+                                  setPlatformForms((prev) => ({
+                                    ...prev,
+                                    [platform]: {
+                                      ...prev[platform],
+                                      youtubeCategoryId: v,
+                                    },
+                                  }))
+                                }
+                                disabled={!isEditable}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="选择分类" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {youtubeCategories.map((cat) => (
+                                    <SelectItem key={cat.id} value={cat.id}>
+                                      {cat.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
+
+                          {/* 播放列表 */}
+                          <div className="space-y-2">
+                            <Label>添加到播放列表</Label>
+                            {isLoadingPlaylists ? (
+                              <Skeleton className="h-20 w-full" />
+                            ) : youtubePlaylists.length === 0 ? (
+                              <p className="text-sm text-muted-foreground py-2">
+                                暂无播放列表
+                              </p>
+                            ) : (
+                              <div className="space-y-2 max-h-32 overflow-y-auto">
+                                {youtubePlaylists.map((playlist) => (
+                                  <div
+                                    key={playlist.id}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <Checkbox
+                                      checked={form.youtubePlaylistIds.includes(playlist.id)}
+                                      onCheckedChange={(checked) => {
+                                        setPlatformForms((prev) => {
+                                          const current = prev[platform]?.youtubePlaylistIds || []
+                                          const newIds = checked
+                                            ? [...current, playlist.id]
+                                            : current.filter((id) => id !== playlist.id)
+                                          return {
+                                            ...prev,
+                                            [platform]: {
+                                              ...prev[platform],
+                                              youtubePlaylistIds: newIds,
+                                            },
+                                          }
+                                        })
+                                      }}
+                                      disabled={!isEditable}
+                                    />
+                                    <span className="text-sm">{playlist.title}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ({playlist.itemCount} 个视频)
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 自定义缩略图 */}
+                          <div className="space-y-2">
+                            <Label>自定义缩略图</Label>
+                            <Input
+                              type="url"
+                              placeholder="输入缩略图 URL..."
+                              value={form.youtubeThumbnailUrl}
+                              onChange={(e) =>
+                                setPlatformForms((prev) => ({
+                                  ...prev,
+                                  [platform]: {
+                                    ...prev[platform],
+                                    youtubeThumbnailUrl: e.target.value,
+                                  },
+                                }))
+                              }
+                              disabled={!isEditable}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              推荐尺寸：1280x720，支持 JPG、PNG 格式
+                            </p>
+                            {form.youtubeThumbnailUrl && (
+                              <div className="relative w-32 aspect-video rounded overflow-hidden">
+                                <Image
+                                  src={form.youtubeThumbnailUrl}
+                                  alt="缩略图预览"
+                                  fill
+                                  className="object-cover"
+                                  sizes="128px"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TabsContent>
                 )

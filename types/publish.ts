@@ -21,6 +21,23 @@ export type PublishPlatform = "INSTAGRAM" | "THREADS" | "YOUTUBE"
 /** 发布模式 */
 export type PublishMode = "IMMEDIATE" | "SCHEDULED" | "MANUAL"
 
+/** YouTube 隐私状态 */
+export type YouTubePrivacyStatus = "public" | "unlisted" | "private"
+
+/** YouTube 视频分类 */
+export interface YouTubeCategory {
+  id: string
+  title: string
+}
+
+/** YouTube 播放列表 */
+export interface YouTubePlaylist {
+  id: string
+  title: string
+  thumbnailUrl?: string
+  itemCount: number
+}
+
 // ============================================================================
 // 业务类型
 // ============================================================================
@@ -33,6 +50,11 @@ export interface PublishPlatformContent {
   title: string | null
   description: string | null
   hashtags: string[]
+  // YouTube 专属配置
+  youtubePrivacyStatus?: YouTubePrivacyStatus | null
+  youtubeCategoryId?: string | null
+  youtubePlaylistIds?: string[]
+  youtubeThumbnailUrl?: string | null
 }
 
 /** 发布记录 */
@@ -151,6 +173,19 @@ export const MODE_CONFIGS: Record<PublishMode, ModeConfig> = {
   IMMEDIATE: { label: "立即发布", description: "确认后立即发布到选中平台" },
   SCHEDULED: { label: "定时发布", description: "设置发布时间，到点自动发布" },
   MANUAL: { label: "人工发布", description: "生成各平台链接，手动复制发布" },
+}
+
+/** YouTube 隐私状态配置 */
+export interface YouTubePrivacyConfig {
+  label: string
+  description: string
+}
+
+/** YouTube 隐私状态配置映射 */
+export const YOUTUBE_PRIVACY_CONFIGS: Record<YouTubePrivacyStatus, YouTubePrivacyConfig> = {
+  public: { label: "公开", description: "所有人可见，可被搜索发现" },
+  unlisted: { label: "不公开", description: "仅有链接的人可观看" },
+  private: { label: "私享", description: "仅自己可见" },
 }
 
 // ============================================================================

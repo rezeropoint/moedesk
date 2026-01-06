@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Instagram, Youtube, AtSign } from "lucide-react"
@@ -83,43 +84,60 @@ export function AccountSelector({ platform, selectedIds, onChange }: AccountSele
     )
   }
 
+  // 计算可选账号数量（排除无频道的 YouTube 账号）
+  const selectableAccounts = accounts.filter(a => a.hasChannel !== false)
+  const selectedCount = selectedIds.filter(id => selectableAccounts.some(a => a.id === id)).length
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 mb-2">
         <Icon className={cn("h-4 w-4", platformConfig.colorClass)} />
         <span className="text-sm font-medium">{platformConfig.name} 账号</span>
         <span className="text-xs text-muted-foreground">
-          （已选 {selectedIds.filter(id => accounts.some(a => a.id === id)).length}/{accounts.length}）
+          （已选 {selectedCount}/{selectableAccounts.length}）
         </span>
       </div>
       <div className="space-y-2">
-        {accounts.map((account) => (
-          <div
-            key={account.id}
-            className={cn(
-              "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
-              selectedIds.includes(account.id)
-                ? "border-primary bg-primary/5"
-                : "border-border hover:bg-muted/50"
-            )}
-            onClick={() => handleToggle(account.id, !selectedIds.includes(account.id))}
-          >
-            <Checkbox
-              checked={selectedIds.includes(account.id)}
-              onCheckedChange={(checked) => handleToggle(account.id, !!checked)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={account.avatarUrl || undefined} />
-              <AvatarFallback>
-                {account.accountName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <span className="text-sm font-medium">{account.accountName}</span>
+        {accounts.map((account) => {
+          // YouTube 账号无频道时禁用选择
+          const isDisabled = account.hasChannel === false
+
+          return (
+            <div
+              key={account.id}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border p-3 transition-colors",
+                isDisabled
+                  ? "cursor-not-allowed opacity-60 bg-muted/30 border-border"
+                  : selectedIds.includes(account.id)
+                    ? "cursor-pointer border-primary bg-primary/5"
+                    : "cursor-pointer border-border hover:bg-muted/50"
+              )}
+              onClick={() => !isDisabled && handleToggle(account.id, !selectedIds.includes(account.id))}
+            >
+              <Checkbox
+                checked={selectedIds.includes(account.id)}
+                disabled={isDisabled}
+                onCheckedChange={(checked) => handleToggle(account.id, !!checked)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={account.avatarUrl || undefined} />
+                <AvatarFallback>
+                  {account.accountName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-sm font-medium">{account.accountName}</span>
+                {isDisabled && (
+                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                    待创建频道
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

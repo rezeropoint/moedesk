@@ -25,6 +25,12 @@ export const PublishModeSchema = z.enum([
   "MANUAL",
 ])
 
+export const YouTubePrivacyStatusSchema = z.enum([
+  "public",
+  "unlisted",
+  "private",
+])
+
 // ============================================================================
 // 请求 Schema
 // ============================================================================
@@ -44,6 +50,11 @@ export const PlatformContentInput = z.object({
   title: z.string().max(100).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
   hashtags: z.array(z.string()).max(30).default([]),
+  // YouTube 专属配置
+  youtubePrivacyStatus: YouTubePrivacyStatusSchema.optional().nullable(),
+  youtubeCategoryId: z.string().optional().nullable(),
+  youtubePlaylistIds: z.array(z.string()).optional(),
+  youtubeThumbnailUrl: z.string().url().optional().nullable().or(z.literal("")),
 })
 
 /** 创建任务请求 */
@@ -75,6 +86,11 @@ export const UpdatePlatformContentReq = z.object({
   title: z.string().max(100).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
   hashtags: z.array(z.string()).max(30).optional(),
+  // YouTube 专属配置
+  youtubePrivacyStatus: YouTubePrivacyStatusSchema.optional().nullable(),
+  youtubeCategoryId: z.string().optional().nullable(),
+  youtubePlaylistIds: z.array(z.string()).optional(),
+  youtubeThumbnailUrl: z.string().url().optional().nullable().or(z.literal("")),
 })
 
 /** 触发发布请求 */
@@ -105,6 +121,11 @@ export const PlatformContentItem = z.object({
   title: z.string().nullable(),
   description: z.string().nullable(),
   hashtags: z.array(z.string()),
+  // YouTube 专属配置
+  youtubePrivacyStatus: z.string().nullable().optional(),
+  youtubeCategoryId: z.string().nullable().optional(),
+  youtubePlaylistIds: z.array(z.string()).optional(),
+  youtubeThumbnailUrl: z.string().nullable().optional(),
 })
 
 /** 发布记录响应 */

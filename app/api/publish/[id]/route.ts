@@ -51,6 +51,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         title: pc.title,
         description: pc.description,
         hashtags: pc.hashtags,
+        youtubePrivacyStatus: pc.youtubePrivacyStatus,
+        youtubeCategoryId: pc.youtubeCategoryId,
+        youtubePlaylistIds: pc.youtubePlaylistIds,
+        youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
       })),
       records: task.records.map((r) => ({
         id: r.id,
@@ -203,6 +207,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             title: pc.title,
             description: pc.description,
             hashtags: pc.hashtags,
+            youtubePrivacyStatus: pc.youtubePrivacyStatus,
+            youtubeCategoryId: pc.youtubeCategoryId,
+            youtubePlaylistIds: pc.youtubePlaylistIds,
+            youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
           })),
           records: refreshedTask.records.map((r) => ({
             id: r.id,
@@ -242,6 +250,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         title: pc.title,
         description: pc.description,
         hashtags: pc.hashtags,
+        youtubePrivacyStatus: pc.youtubePrivacyStatus,
+        youtubeCategoryId: pc.youtubeCategoryId,
+        youtubePlaylistIds: pc.youtubePlaylistIds,
+        youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
       })),
       records: updatedTask.records.map((r) => ({
         id: r.id,

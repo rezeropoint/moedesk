@@ -34,9 +34,10 @@ import { Plus, Calendar as CalendarIcon, Instagram, Youtube, AtSign } from "luci
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { zhCN } from "date-fns/locale"
-import type { PublishPlatform, PublishMode } from "@/types/publish"
-import { PLATFORM_CONFIGS, MODE_CONFIGS } from "@/types/publish"
+import type { PublishPlatform, PublishMode, YouTubePrivacyStatus } from "@/types/publish"
+import { PLATFORM_CONFIGS, MODE_CONFIGS, YOUTUBE_PRIVACY_CONFIGS } from "@/types/publish"
 import { AccountSelector } from "@/components/settings/accounts/account-selector"
+import { Label } from "@/components/ui/label"
 
 const formSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(100, "标题最多100字符"),
@@ -66,6 +67,8 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // 账号选择状态：{ platform: accountIds[] }
   const [platformAccounts, setPlatformAccounts] = useState<Record<string, string[]>>({})
+  // YouTube 隐私设置
+  const [youtubePrivacyStatus, setYoutubePrivacyStatus] = useState<YouTubePrivacyStatus>("public")
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -98,6 +101,15 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
           accountIds: platformAccounts[platform],
         }))
 
+      // 构建平台特定配置
+      const platformContents = values.platforms.map(platform => ({
+        platform,
+        // YouTube 专属配置
+        ...(platform === "YOUTUBE" && {
+          youtubePrivacyStatus,
+        }),
+      }))
+
       const response = await fetch("/api/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -105,6 +117,7 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
           ...values,
           scheduledAt: values.scheduledAt?.toISOString() || null,
           platformAccounts: accountsData.length > 0 ? accountsData : undefined,
+          platformContents,
         }),
       })
 
@@ -116,6 +129,7 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       setOpen(false)
       form.reset()
       setPlatformAccounts({})
+      setYoutubePrivacyStatus("public")
       onSuccess?.()
     } catch (error) {
       console.error("Create task failed:", error)
@@ -246,6 +260,36 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
                     />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* YouTube 隐私设置（选择 YouTube 平台后显示） */}
+            {selectedPlatforms.includes("YOUTUBE") && (
+              <div className="space-y-3">
+                <Label>YouTube 隐私设置</Label>
+                <RadioGroup
+                  value={youtubePrivacyStatus}
+                  onValueChange={(v) => setYoutubePrivacyStatus(v as YouTubePrivacyStatus)}
+                  className="flex flex-wrap gap-4"
+                >
+                  {(Object.keys(YOUTUBE_PRIVACY_CONFIGS) as YouTubePrivacyStatus[]).map((status) => {
+                    const config = YOUTUBE_PRIVACY_CONFIGS[status]
+                    return (
+                      <div key={status} className="flex items-center space-x-2">
+                        <RadioGroupItem value={status} id={`privacy-${status}`} />
+                        <Label
+                          htmlFor={`privacy-${status}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {config.label}
+                        </Label>
+                      </div>
+                    )
+                  })}
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  {YOUTUBE_PRIVACY_CONFIGS[youtubePrivacyStatus].description}
+                </p>
               </div>
             )}
 
