@@ -1,0 +1,174 @@
+{
+  "name": "SOP-06 定时发布检查",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "d9b1f9e1-0001-4000-8000-000000000001",
+      "name": "每分钟检查",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  title,\n  \"videoUrl\",\n  \"coverUrl\",\n  platforms,\n  \"seriesId\"\nFROM \"PublishTask\"\nWHERE status = 'SCHEDULED'\n  AND \"scheduledAt\" <= NOW()\nLIMIT 10;",
+        "options": {}
+      },
+      "id": "d9b1f9e1-0002-4000-8000-000000000002",
+      "name": "查询到期任务",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [220, 300],
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "MoeDesk PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d9b1f9e1-0003-4000-8000-000000000003",
+      "name": "有待发布任务?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 为每个到期任务准备触发数据\nconst items = $input.all();\n\nreturn items.map(item => {\n  const task = item.json;\n  return {\n    json: {\n      taskId: task.id,\n      title: task.title,\n      videoUrl: task.videoUrl,\n      coverUrl: task.coverUrl,\n      platforms: task.platforms,\n      platformContents: [], // 将从数据库获取\n    }\n  };\n});"
+      },
+      "id": "d9b1f9e1-0004-4000-8000-000000000004",
+      "name": "准备触发数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.N8N_WEBHOOK_URL || 'http://localhost:5678' }}/webhook/sop-05-publish-content",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "d9b1f9e1-0005-4000-8000-000000000005",
+      "name": "触发发布工作流",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 无待发布任务，直接返回空结果\nreturn [{\n  json: {\n    message: '无待发布任务',\n    checkedAt: new Date().toISOString(),\n  }\n}];"
+      },
+      "id": "d9b1f9e1-0006-4000-8000-000000000006",
+      "name": "无任务",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 400]
+    }
+  ],
+  "connections": {
+    "每分钟检查": {
+      "main": [
+        [
+          {
+            "node": "查询到期任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询到期任务": {
+      "main": [
+        [
+          {
+            "node": "有待发布任务?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有待发布任务?": {
+      "main": [
+        [
+          {
+            "node": "准备触发数据",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "无任务",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "准备触发数据": {
+      "main": [
+        [
+          {
+            "node": "触发发布工作流",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "sop-06-schedule-publish"
+    },
+    {
+      "name": "content-distribution"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-01-06T00:00:00.000Z",
+  "versionId": "1"
+}

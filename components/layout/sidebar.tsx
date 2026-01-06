@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   MessageSquare,
-  Calendar,
+  Send,
   Flame,
   FileEdit,
   BarChart3,
@@ -21,7 +21,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: "消息中心", href: "/inbox", icon: MessageSquare, badge: null },
-  { name: "内容日历", href: "/content", icon: Calendar },
+  { name: "发布中心", href: "/publish", icon: Send },
   { name: "热点雷达", href: "/trending", icon: Flame },
   { name: "内容审核", href: "/review", icon: FileEdit },
   { name: "数据报表", href: "/analytics", icon: BarChart3 },

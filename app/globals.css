@@ -49,6 +49,10 @@
   /* 数据源品牌色 */
   --color-brand-anilist: var(--brand-anilist);
   --color-brand-bilibili: var(--brand-bilibili);
+  /* 社交平台品牌色 */
+  --color-brand-instagram: var(--brand-instagram);
+  --color-brand-youtube: var(--brand-youtube);
+  --color-brand-threads: var(--brand-threads);
 }
 
 :root {
@@ -77,6 +81,10 @@
   /* 数据源品牌色 */
   --brand-anilist: oklch(0.65 0.15 230);    /* #02a9ff */
   --brand-bilibili: oklch(0.65 0.2 0);      /* #fb7299 */
+  /* 社交平台品牌色 */
+  --brand-instagram: oklch(0.65 0.25 350);  /* #E4405F */
+  --brand-youtube: oklch(0.6 0.25 27);      /* #FF0000 */
+  --brand-threads: oklch(0.2 0 0);          /* #000000 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

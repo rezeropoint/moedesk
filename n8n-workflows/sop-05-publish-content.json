@@ -1,0 +1,196 @@
+{
+  "name": "SOP-05 内容发布",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sop-05-publish-content",
+        "responseMode": "responseNode"
+      },
+      "id": "c9a0f8e0-0001-4000-8000-000000000001",
+      "name": "Webhook 触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "sop-05-publish-content"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析请求数据\nconst body = $input.first().json.body;\nconst { taskId, title, videoUrl, coverUrl, seriesTitle, platforms, platformContents } = body;\n\nif (!taskId || !platforms?.length) {\n  throw new Error('Missing required fields: taskId or platforms');\n}\n\n// 为每个平台生成发布任务\nconst publishJobs = platforms.map(platform => {\n  const content = platformContents?.find(c => c.platform === platform) || {};\n  return {\n    json: {\n      taskId,\n      platform,\n      title: content.title || title,\n      description: content.description || '',\n      hashtags: content.hashtags || [],\n      videoUrl,\n      coverUrl,\n      seriesTitle,\n    }\n  };\n});\n\nreturn publishJobs;"
+      },
+      "id": "c9a0f8e0-0002-4000-8000-000000000002",
+      "name": "准备发布数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "c9a0f8e0-0003-4000-8000-000000000003",
+      "name": "模拟发布延迟",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 模拟发布结果\nconst item = $input.first().json;\nconst success = Math.random() > 0.1; // 90% 成功率\n\nconst platformUrls = {\n  INSTAGRAM: 'https://instagram.com/p/',\n  THREADS: 'https://threads.net/@moedesk/post/',\n  YOUTUBE: 'https://youtube.com/shorts/',\n};\n\nconst result = {\n  taskId: item.taskId,\n  platform: item.platform,\n  success,\n  externalId: success ? `${item.platform.toLowerCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : null,\n  externalUrl: success ? `${platformUrls[item.platform] || 'https://example.com/'}${Date.now()}` : null,\n  errorMessage: success ? null : 'API rate limit exceeded (simulated error)',\n  publishedAt: success ? new Date().toISOString() : null,\n};\n\nreturn [{ json: result }];"
+      },
+      "id": "c9a0f8e0-0004-4000-8000-000000000004",
+      "name": "模拟发布结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NEXTJS_URL || 'http://localhost:3000' }}/api/publish/callback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "c9a0f8e0-0005-4000-8000-000000000005",
+      "name": "回调更新状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "c9a0f8e0-0006-4000-8000-000000000006",
+      "name": "合并结果",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 汇总所有发布结果\nconst items = $input.all();\nconst results = items.map(item => item.json);\n\nconst successCount = results.filter(r => r.success).length;\nconst failedCount = results.filter(r => !r.success).length;\n\nreturn [{\n  json: {\n    success: true,\n    message: '发布任务已处理',\n    summary: {\n      total: results.length,\n      success: successCount,\n      failed: failedCount,\n    },\n    results,\n  }\n}];"
+      },
+      "id": "c9a0f8e0-0007-4000-8000-000000000007",
+      "name": "生成响应",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "c9a0f8e0-0008-4000-8000-000000000008",
+      "name": "返回响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1540, 300]
+    }
+  ],
+  "connections": {
+    "Webhook 触发": {
+      "main": [
+        [
+          {
+            "node": "准备发布数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "准备发布数据": {
+      "main": [
+        [
+          {
+            "node": "模拟发布延迟",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "模拟发布延迟": {
+      "main": [
+        [
+          {
+            "node": "模拟发布结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "模拟发布结果": {
+      "main": [
+        [
+          {
+            "node": "回调更新状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回调更新状态": {
+      "main": [
+        [
+          {
+            "node": "合并结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并结果": {
+      "main": [
+        [
+          {
+            "node": "生成响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成响应": {
+      "main": [
+        [
+          {
+            "node": "返回响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "sop-05-content-adapt"
+    },
+    {
+      "name": "content-distribution"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2026-01-06T00:00:00.000Z",
+  "versionId": "1"
+}

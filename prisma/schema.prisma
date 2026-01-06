@@ -109,6 +109,7 @@ model Series {
   // 关联
   entries         Entry[]                          // 包含的所有季度
   trending        Trending?                        // 系列级热度追踪
+  publishTasks    PublishTask[]                    // 发布任务
 
   @@index([type])
   @@index([aggregatedScore])
@@ -223,4 +224,103 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 
   @@map("system_configs")
+}
+
+// ============================================================================
+// 发布相关表（多平台内容发布）
+// ============================================================================
+
+/// 发布状态枚举
+enum PublishStatus {
+  DRAFT           // 草稿
+  SCHEDULED       // 已排期
+  PUBLISHING      // 发布中
+  PUBLISHED       // 已发布
+  PARTIAL_FAILED  // 部分失败
+  FAILED          // 全部失败
+}
+
+/// 发布平台枚举
+enum PublishPlatform {
+  INSTAGRAM
+  THREADS
+  YOUTUBE
+  // 后续扩展：TIKTOK, TWITTER
+}
+
+/// 发布模式枚举
+enum PublishMode {
+  IMMEDIATE   // 立即发布
+  SCHEDULED   // 定时发布
+  MANUAL      // 人工发布
+}
+
+/// 发布任务表
+model PublishTask {
+  id            String            @id @default(cuid())
+
+  // 内容信息
+  title         String                                // 内容标题
+  videoUrl      String?                               // 视频文件 URL
+  coverUrl      String?                               // 封面 URL
+  seriesId      String?                               // 关联系列（可选）
+  series        Series?           @relation(fields: [seriesId], references: [id])
+
+  // 发布配置
+  platforms     PublishPlatform[]                     // 目标平台列表
+  mode          PublishMode       @default(SCHEDULED)
+  scheduledAt   DateTime?                             // 排期时间
+
+  // 状态
+  status        PublishStatus     @default(DRAFT)
+
+  // 时间戳
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  createdBy     String                                // User.id
+
+  // 关联
+  platformContents PublishPlatformContent[]
+  records          PublishRecord[]
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdBy])
+  @@map("publish_tasks")
+}
+
+/// 平台文案表 - 各平台的定制内容
+model PublishPlatformContent {
+  id          String          @id @default(cuid())
+  taskId      String
+  task        PublishTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  platform    PublishPlatform
+  title       String?                               // 平台特定标题
+  description String?                               // 平台特定描述
+  hashtags    String[]                              // Hashtag 列表
+
+  @@unique([taskId, platform])
+  @@map("publish_platform_contents")
+}
+
+/// 发布记录表 - 单次发布的执行记录
+model PublishRecord {
+  id          String          @id @default(cuid())
+  taskId      String
+  task        PublishTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  platform    PublishPlatform
+  status      PublishStatus
+  externalId  String?                               // 平台返回的内容 ID
+  externalUrl String?                               // 平台上的内容链接
+
+  errorMessage String?
+  publishedAt  DateTime?
+
+  createdAt   DateTime        @default(now())
+
+  @@index([taskId])
+  @@index([platform])
+  @@map("publish_records")
 }
