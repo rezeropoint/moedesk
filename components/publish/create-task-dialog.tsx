@@ -36,6 +36,7 @@ import { format } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import type { PublishPlatform, PublishMode } from "@/types/publish"
 import { PLATFORM_CONFIGS, MODE_CONFIGS } from "@/types/publish"
+import { AccountSelector } from "@/components/settings/accounts/account-selector"
 
 const formSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(100, "标题最多100字符"),
@@ -63,6 +64,8 @@ interface CreateTaskDialogProps {
 export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // 账号选择状态：{ platform: accountIds[] }
+  const [platformAccounts, setPlatformAccounts] = useState<Record<string, string[]>>({})
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -77,16 +80,31 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   })
 
   const selectedMode = form.watch("mode")
+  const selectedPlatforms = form.watch("platforms")
+
+  // 更新单个平台的账号选择
+  const handleAccountsChange = (platform: PublishPlatform, accountIds: string[]) => {
+    setPlatformAccounts(prev => ({ ...prev, [platform]: accountIds }))
+  }
 
   async function handleSubmit(values: FormValues) {
     setIsSubmitting(true)
     try {
+      // 构建账号关联数据
+      const accountsData = values.platforms
+        .filter(p => platformAccounts[p]?.length > 0)
+        .map(platform => ({
+          platform,
+          accountIds: platformAccounts[platform],
+        }))
+
       const response = await fetch("/api/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...values,
           scheduledAt: values.scheduledAt?.toISOString() || null,
+          platformAccounts: accountsData.length > 0 ? accountsData : undefined,
         }),
       })
 
@@ -97,6 +115,7 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
 
       setOpen(false)
       form.reset()
+      setPlatformAccounts({})
       onSuccess?.()
     } catch (error) {
       console.error("Create task failed:", error)
@@ -212,6 +231,23 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
                 </FormItem>
               )}
             />
+
+            {/* 账号选择（选择平台后显示） */}
+            {selectedPlatforms.length > 0 && (
+              <div className="space-y-4">
+                <FormLabel>发布账号</FormLabel>
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                  {selectedPlatforms.map((platform) => (
+                    <AccountSelector
+                      key={platform}
+                      platform={platform}
+                      selectedIds={platformAccounts[platform] || []}
+                      onChange={(ids) => handleAccountsChange(platform, ids)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 发布模式 */}
             <FormField

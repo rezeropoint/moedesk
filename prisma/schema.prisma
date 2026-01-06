@@ -27,6 +27,7 @@ model User {
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
   sessions     Session[]
+  socialAccounts SocialAccount[]
 
   @@map("users")
 }
@@ -230,6 +231,14 @@ model SystemConfig {
 // 发布相关表（多平台内容发布）
 // ============================================================================
 
+/// 社媒账号状态枚举
+enum SocialAccountStatus {
+  PENDING   // 待验证
+  ACTIVE    // 正常
+  EXPIRED   // 授权过期
+  DISABLED  // 已禁用
+}
+
 /// 发布状态枚举
 enum PublishStatus {
   DRAFT           // 草稿
@@ -253,6 +262,59 @@ enum PublishMode {
   IMMEDIATE   // 立即发布
   SCHEDULED   // 定时发布
   MANUAL      // 人工发布
+}
+
+/// 社媒账号表 - 存储用户绑定的各平台账号
+model SocialAccount {
+  id            String              @id @default(cuid())
+
+  // 所有者
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 平台信息
+  platform      PublishPlatform                           // 平台类型
+  accountName   String                                    // 账号名称/昵称，如 @moedesk_official
+  accountId     String?                                   // 平台账号 ID（OAuth 获取）
+  accountUrl    String?                                   // 账号主页链接
+  avatarUrl     String?                                   // 账号头像
+
+  // 授权信息（预留 OAuth）
+  accessToken   String?                                   // 访问令牌（加密存储）
+  refreshToken  String?                                   // 刷新令牌（加密存储）
+  tokenExpiry   DateTime?                                 // 令牌过期时间
+
+  // 状态
+  status        SocialAccountStatus @default(ACTIVE)
+
+  // 时间戳
+  lastUsedAt    DateTime?                                 // 最后使用时间
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  // 关联
+  taskAccounts   PublishTaskAccount[]
+  publishRecords PublishRecord[]
+
+  @@unique([userId, platform, accountName])
+  @@index([userId, platform])
+  @@index([status])
+  @@map("social_accounts")
+}
+
+/// 发布任务-账号关联表（多对多）
+model PublishTaskAccount {
+  id          String        @id @default(cuid())
+  taskId      String
+  task        PublishTask   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  accountId   String
+  account     SocialAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+
+  @@unique([taskId, accountId])
+  @@index([taskId])
+  @@index([accountId])
+  @@map("publish_task_accounts")
 }
 
 /// 发布任务表
@@ -282,6 +344,7 @@ model PublishTask {
   // 关联
   platformContents PublishPlatformContent[]
   records          PublishRecord[]
+  taskAccounts     PublishTaskAccount[]
 
   @@index([status])
   @@index([scheduledAt])
@@ -311,6 +374,8 @@ model PublishRecord {
   task        PublishTask     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   platform    PublishPlatform
+  accountId   String?                               // 使用的社媒账号 ID
+  account     SocialAccount?  @relation(fields: [accountId], references: [id])
   status      PublishStatus
   externalId  String?                               // 平台返回的内容 ID
   externalUrl String?                               // 平台上的内容链接
@@ -322,5 +387,6 @@ model PublishRecord {
 
   @@index([taskId])
   @@index([platform])
+  @@index([accountId])
   @@map("publish_records")
 }

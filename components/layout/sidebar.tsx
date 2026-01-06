@@ -32,6 +32,10 @@ const adminNavigation = [
   { name: "用户管理", href: "/admin/users", icon: Users },
 ]
 
+const settingsNavigation = [
+  { name: "账号管理", href: "/settings/accounts", icon: Users },
+]
+
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
 
@@ -49,6 +53,31 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
+          const isActive = pathname.startsWith(item.href)
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              {item.name}
+            </Link>
+          )
+        })}
+
+        {/* Settings Section */}
+        <div className="pt-4 pb-2">
+          <p className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            设置
+          </p>
+        </div>
+        {settingsNavigation.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link

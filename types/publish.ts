@@ -1,5 +1,7 @@
 // 发布模块类型定义（与 Prisma Schema 同步）
 
+import type { AccountBrief } from "./social-account"
+
 // ============================================================================
 // 枚举类型
 // ============================================================================
@@ -38,6 +40,8 @@ export interface PublishRecord {
   id: string
   taskId: string
   platform: PublishPlatform
+  accountId: string | null
+  account?: AccountBrief | null  // 关联的账号信息（用于展示）
   status: PublishStatus
   externalId: string | null
   externalUrl: string | null
@@ -63,6 +67,7 @@ export interface PublishTask {
   createdBy: string
   platformContents: PublishPlatformContent[]
   records?: PublishRecord[]
+  accounts?: AccountBrief[]     // 任务关联的账号（用于展示）
 }
 
 /** 发布统计数据 */
@@ -166,6 +171,11 @@ export interface CreateTaskFormData {
     title?: string
     description?: string
     hashtags: string[]
+  }[]
+  /** 每个平台选择的账号 ID 列表 */
+  platformAccounts?: {
+    platform: PublishPlatform
+    accountIds: string[]
   }[]
 }
 
