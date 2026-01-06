@@ -32,7 +32,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Instagram, Youtube, AtSign, Clock, Loader2 } from "lucide-react"
+import { Plus, Instagram, Youtube, AtSign, Loader2, ExternalLink } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { PublishPlatform } from "@/types/publish"
 import { PLATFORM_CONFIGS } from "@/types/publish"
@@ -59,6 +60,7 @@ interface AddAccountDialogProps {
 export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isAuthorizing, setIsAuthorizing] = useState(false)
   const [activeTab, setActiveTab] = useState<"manual" | "oauth">("manual")
 
   const form = useForm<FormData>({
@@ -97,6 +99,27 @@ export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
       form.setError("accountName", { message: "网络错误，请重试" })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleYouTubeAuth = async () => {
+    setIsAuthorizing(true)
+    try {
+      const response = await fetch("/api/oauth/youtube/authorize")
+      if (response.ok) {
+        const { data } = await response.json()
+        // 跳转到 Google 授权页面
+        window.location.href = data.authUrl
+      } else {
+        const result = await response.json()
+        console.error("OAuth 发起失败:", result.error)
+        alert(result.error || "OAuth 授权失败，请重试")
+      }
+    } catch (error) {
+      console.error("OAuth 发起失败:", error)
+      alert("网络错误，请重试")
+    } finally {
+      setIsAuthorizing(false)
     }
   }
 
@@ -232,27 +255,70 @@ export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
           </TabsContent>
 
           <TabsContent value="oauth" className="mt-4">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-4 bg-muted rounded-full mb-4">
-                <Clock className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">OAuth 授权即将上线</h3>
-              <p className="text-sm text-muted-foreground max-w-[300px]">
-                一键授权连接社媒账号，自动获取账号信息并实现发布功能。
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                选择平台，一键授权连接您的社媒账号
               </p>
-              <div className="flex gap-3 mt-6">
-                {(Object.keys(PLATFORM_CONFIGS) as PublishPlatform[]).map((platform) => {
-                  const Icon = platformIcons[platform]
-                  const config = PLATFORM_CONFIGS[platform]
-                  return (
-                    <div
-                      key={platform}
-                      className="p-3 rounded-lg border bg-card opacity-50"
-                    >
-                      <Icon className={cn("h-6 w-6", config.colorClass)} />
-                    </div>
-                  )
-                })}
+
+              <div className="space-y-3">
+                {/* YouTube 授权按钮 - 已实现 */}
+                <Button
+                  variant="outline"
+                  className="w-full h-16 justify-start gap-4 px-4"
+                  onClick={handleYouTubeAuth}
+                  disabled={isAuthorizing}
+                >
+                  <div className="p-2 rounded-lg bg-red-50">
+                    <Youtube className="h-6 w-6 text-brand-youtube" />
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-medium">YouTube</span>
+                    <span className="text-xs text-muted-foreground">
+                      授权后可上传视频、获取频道数据
+                    </span>
+                  </div>
+                  {isAuthorizing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+
+                {/* Instagram 占位 */}
+                <Button
+                  variant="outline"
+                  className="w-full h-16 justify-start gap-4 px-4 opacity-60"
+                  disabled
+                >
+                  <div className="p-2 rounded-lg bg-pink-50">
+                    <Instagram className="h-6 w-6 text-brand-instagram" />
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-medium">Instagram</span>
+                    <span className="text-xs text-muted-foreground">
+                      需要 Meta 商业账户
+                    </span>
+                  </div>
+                  <Badge variant="secondary">Coming Soon</Badge>
+                </Button>
+
+                {/* Threads 占位 */}
+                <Button
+                  variant="outline"
+                  className="w-full h-16 justify-start gap-4 px-4 opacity-60"
+                  disabled
+                >
+                  <div className="p-2 rounded-lg bg-gray-100">
+                    <AtSign className="h-6 w-6 text-brand-threads" />
+                  </div>
+                  <div className="flex flex-col items-start flex-1">
+                    <span className="font-medium">Threads</span>
+                    <span className="text-xs text-muted-foreground">
+                      与 Instagram 同生态
+                    </span>
+                  </div>
+                  <Badge variant="secondary">Coming Soon</Badge>
+                </Button>
               </div>
             </div>
           </TabsContent>

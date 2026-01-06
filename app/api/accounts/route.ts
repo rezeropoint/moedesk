@@ -61,6 +61,11 @@ export async function GET(request: NextRequest) {
     lastUsedAt: a.lastUsedAt?.toISOString() || null,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
+    // YouTube 专属字段
+    channelStats: a.channelStats,
+    googleAccountId: a.googleAccountId,
+    googleEmail: a.googleEmail,
+    googleName: a.googleName,
   }))
 
   return Response.json({

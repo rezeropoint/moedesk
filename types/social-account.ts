@@ -3,6 +3,18 @@
 import type { PublishPlatform } from "./publish"
 
 // ============================================================================
+// YouTube 频道统计
+// ============================================================================
+
+/** YouTube 频道统计数据 */
+export interface YouTubeChannelStats {
+  subscriberCount: number
+  videoCount: number
+  viewCount: number
+  fetchedAt: string
+}
+
+// ============================================================================
 // 枚举类型
 // ============================================================================
 
@@ -30,6 +42,12 @@ export interface SocialAccount {
   lastUsedAt: string | null
   createdAt: string
   updatedAt: string
+  // YouTube 专属字段
+  channelStats?: YouTubeChannelStats | null
+  // Google 账户信息（YouTube 专用）
+  googleAccountId?: string | null
+  googleEmail?: string | null
+  googleName?: string | null
 }
 
 /** 账号统计数据 */

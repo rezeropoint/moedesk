@@ -29,11 +29,23 @@ import {
   Instagram,
   Youtube,
   AtSign,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { SocialAccount } from "@/types/social-account"
+import type { SocialAccount, YouTubeChannelStats } from "@/types/social-account"
 import type { PublishPlatform } from "@/types/publish"
 import { ACCOUNT_STATUS_CONFIGS } from "@/types/social-account"
+
+/** 格式化数字（简化显示：1.2K、3.4M 等） */
+function formatNumber(num: number): string {
+  if (num >= 1_000_000) {
+    return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M"
+  }
+  if (num >= 1_000) {
+    return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "K"
+  }
+  return num.toString()
+}
 import { PLATFORM_CONFIGS } from "@/types/publish"
 import { EditAccountDialog } from "./edit-account-dialog"
 
@@ -50,6 +62,32 @@ const platformIcons: Record<PublishPlatform, React.ElementType> = {
 
 export function AccountList({ accounts, onUpdate }: AccountListProps) {
   const [editAccount, setEditAccount] = useState<SocialAccount | null>(null)
+  const [refreshingId, setRefreshingId] = useState<string | null>(null)
+
+  const handleReauthorize = () => {
+    // 跳转到 YouTube 授权
+    window.location.href = "/api/oauth/youtube/authorize"
+  }
+
+  const handleRefreshToken = async (accountId: string) => {
+    setRefreshingId(accountId)
+    try {
+      const response = await fetch(`/api/accounts/${accountId}/refresh-token`, {
+        method: "POST",
+      })
+      if (response.ok) {
+        onUpdate()
+      } else {
+        const result = await response.json()
+        alert(result.error || "刷新失败")
+      }
+    } catch (error) {
+      console.error("Refresh token failed:", error)
+      alert("网络错误，请重试")
+    } finally {
+      setRefreshingId(null)
+    }
+  }
 
   const handleToggleStatus = async (account: SocialAccount) => {
     try {
@@ -114,20 +152,39 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
                           {account.accountName.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{account.accountName}</span>
+                          {account.accountUrl && (
+                            <a
+                              href={account.accountUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                          {/* 无频道提示 */}
+                          {account.platform === "YOUTUBE" && !account.accountId && (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300">
+                              待创建频道
+                            </Badge>
+                          )}
                         </div>
-                        {account.accountUrl && (
-                          <a
-                            href={account.accountUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-muted-foreground hover:underline flex items-center gap-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                            查看主页
-                          </a>
+                        {/* Google 邮箱（YouTube 账号） */}
+                        {account.platform === "YOUTUBE" && account.googleEmail && (
+                          <div className="text-xs text-muted-foreground">
+                            {account.googleEmail}
+                          </div>
+                        )}
+                        {/* YouTube 频道统计数据 */}
+                        {account.platform === "YOUTUBE" && account.channelStats && (
+                          <div className="flex gap-3 text-xs text-muted-foreground">
+                            <span>{formatNumber((account.channelStats as YouTubeChannelStats).subscriberCount)} 订阅</span>
+                            <span>{formatNumber((account.channelStats as YouTubeChannelStats).videoCount)} 视频</span>
+                            <span>{formatNumber((account.channelStats as YouTubeChannelStats).viewCount)} 播放</span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -142,6 +199,18 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
                     <div className="flex items-center gap-2">
                       <span className={cn("h-2 w-2 rounded-full", statusConfig.dotColor)} />
                       <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+                      {/* Token 过期操作 */}
+                      {account.status === "EXPIRED" && account.platform === "YOUTUBE" && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs text-primary"
+                          onClick={handleReauthorize}
+                        >
+                          <RefreshCw className="mr-1 h-3 w-3" />
+                          重新授权
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -161,6 +230,19 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
                           <Pencil className="mr-2 h-4 w-4" />
                           编辑
                         </DropdownMenuItem>
+                        {/* YouTube 刷新 Token */}
+                        {account.platform === "YOUTUBE" && account.status === "ACTIVE" && (
+                          <DropdownMenuItem
+                            onClick={() => handleRefreshToken(account.id)}
+                            disabled={refreshingId === account.id}
+                          >
+                            <RefreshCw className={cn(
+                              "mr-2 h-4 w-4",
+                              refreshingId === account.id && "animate-spin"
+                            )} />
+                            刷新 Token
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleToggleStatus(account)}

@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { RefreshCw, Users, Loader2, Instagram, Youtube, AtSign } from "lucide-react"
+import { RefreshCw, Users, Loader2, Instagram, Youtube, AtSign, CheckCircle2, XCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AccountList } from "@/components/settings/accounts/account-list"
 import { AddAccountDialog } from "@/components/settings/accounts/add-account-dialog"
 import type { SocialAccount, AccountStats } from "@/types/social-account"
@@ -18,12 +19,63 @@ const platformIcons: Record<PublishPlatform, React.ElementType> = {
   YOUTUBE: Youtube,
 }
 
+/** OAuth 错误消息映射 */
+const ERROR_MESSAGES: Record<string, string> = {
+  unauthorized: "请先登录",
+  missing_params: "授权参数缺失，请重试",
+  invalid_state: "授权验证失败，请重试",
+  config_error: "OAuth 配置不完整，请联系管理员",
+  token_exchange_failed: "获取授权令牌失败，请重试",
+  channel_fetch_failed: "获取 YouTube 频道信息失败",
+  userinfo_fetch_failed: "获取 Google 账户信息失败",
+  no_channel: "未找到 YouTube 频道，请确认账号已创建频道",
+  internal_error: "服务器错误，请稍后重试",
+  access_denied: "授权已取消",
+  session_expired: "授权已过期，请重新授权",
+  cancelled: "已取消频道选择",
+}
+
+/** 成功消息映射 */
+const SUCCESS_MESSAGES: Record<string, string> = {
+  youtube_connected: "YouTube 频道授权成功！",
+  google_connected_no_channel: "Google 账号已绑定，但您还未创建 YouTube 频道",
+}
+
+/** 从 URL 参数解析初始消息 */
+function getInitialMessage(): { type: "success" | "error"; text: string } | null {
+  if (typeof window === "undefined") return null
+
+  const params = new URLSearchParams(window.location.search)
+  const success = params.get("success")
+  const error = params.get("error")
+
+  // 清除 URL 参数
+  if (success || error) {
+    window.history.replaceState({}, "", "/settings/accounts")
+  }
+
+  if (success) {
+    const channelsMatch = success.match(/^youtube_connected_(\d+)_channels$/)
+    if (channelsMatch) {
+      return { type: "success", text: `成功绑定 ${channelsMatch[1]} 个 YouTube 频道！` }
+    }
+    return { type: "success", text: SUCCESS_MESSAGES[success] || "操作成功！" }
+  }
+
+  if (error) {
+    return { type: "error", text: ERROR_MESSAGES[error] || `授权失败：${error}` }
+  }
+
+  return null
+}
+
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [stats, setStats] = useState<AccountStats | null>(null)
   const [activeTab, setActiveTab] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(getInitialMessage)
 
   const fetchAccounts = useCallback(async (platform?: string) => {
     try {
@@ -90,6 +142,31 @@ export default function AccountsPage() {
 
   return (
     <div className="p-8 space-y-6">
+      {/* OAuth 回调消息提示 */}
+      {message && (
+        <Alert
+          variant={message.type === "error" ? "destructive" : "default"}
+          className={message.type === "success" ? "border-green-500 bg-green-50 text-green-700" : ""}
+        >
+          {message.type === "success" ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
+          <AlertDescription className="flex items-center justify-between">
+            {message.text}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => setMessage(null)}
+            >
+              关闭
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* 页面标题 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
