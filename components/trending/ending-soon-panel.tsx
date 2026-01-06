@@ -78,7 +78,7 @@ export function EndingSoonPanel({ items }: EndingSoonPanelProps) {
                     item.daysRemaining <= 7 && "bg-destructive/10 text-destructive",
                     item.daysRemaining > 7 &&
                       item.daysRemaining <= 14 &&
-                      "bg-orange-100 text-orange-700"
+                      "bg-status-warning-bg text-status-warning"
                   )}
                 >
                   {item.daysRemaining <= 0 ? "已完结" : `${item.daysRemaining}天`}

@@ -268,7 +268,7 @@ export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
                   onClick={handleYouTubeAuth}
                   disabled={isAuthorizing}
                 >
-                  <div className="p-2 rounded-lg bg-red-50">
+                  <div className="p-2 rounded-lg bg-brand-youtube/10">
                     <Youtube className="h-6 w-6 text-brand-youtube" />
                   </div>
                   <div className="flex flex-col items-start flex-1">
@@ -290,7 +290,7 @@ export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
                   className="w-full h-16 justify-start gap-4 px-4 opacity-60"
                   disabled
                 >
-                  <div className="p-2 rounded-lg bg-pink-50">
+                  <div className="p-2 rounded-lg bg-brand-instagram/10">
                     <Instagram className="h-6 w-6 text-brand-instagram" />
                   </div>
                   <div className="flex flex-col items-start flex-1">
@@ -308,7 +308,7 @@ export function AddAccountDialog({ onSuccess }: AddAccountDialogProps) {
                   className="w-full h-16 justify-start gap-4 px-4 opacity-60"
                   disabled
                 >
-                  <div className="p-2 rounded-lg bg-gray-100">
+                  <div className="p-2 rounded-lg bg-muted">
                     <AtSign className="h-6 w-6 text-brand-threads" />
                   </div>
                   <div className="flex flex-col items-start flex-1">

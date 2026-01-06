@@ -117,7 +117,7 @@ export function UserTable({ users, currentUserId }: UserTableProps) {
                             onClick={() => handleToggleStatus(user)}
                             disabled={isPending}
                             className={
-                              user.isActive ? "text-destructive" : "text-green-600"
+                              user.isActive ? "text-destructive" : "text-status-success"
                             }
                           >
                             {user.isActive ? (

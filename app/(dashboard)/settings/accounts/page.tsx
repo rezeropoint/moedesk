@@ -39,6 +39,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 const SUCCESS_MESSAGES: Record<string, string> = {
   youtube_connected: "YouTube 频道授权成功！",
   google_connected_no_channel: "Google 账号已绑定，但您还未创建 YouTube 频道",
+  channel_refreshed: "频道信息刷新成功！",
 }
 
 /** 从 URL 参数解析初始消息 */
@@ -146,7 +147,7 @@ export default function AccountsPage() {
       {message && (
         <Alert
           variant={message.type === "error" ? "destructive" : "default"}
-          className={message.type === "success" ? "border-green-500 bg-green-50 text-green-700" : ""}
+          className={message.type === "success" ? "border-status-success bg-status-success-bg text-status-success" : ""}
         >
           {message.type === "success" ? (
             <CheckCircle2 className="h-4 w-4" />
@@ -207,19 +208,19 @@ export default function AccountsPage() {
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+              <div className="text-2xl font-bold text-status-success">{stats.active}</div>
               <p className="text-sm text-muted-foreground">正常账号</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-red-600">{stats.expired}</div>
+              <div className="text-2xl font-bold text-status-error">{stats.expired}</div>
               <p className="text-sm text-muted-foreground">已过期</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-gray-500">{stats.disabled}</div>
+              <div className="text-2xl font-bold text-muted-foreground">{stats.disabled}</div>
               <p className="text-sm text-muted-foreground">已禁用</p>
             </CardContent>
           </Card>

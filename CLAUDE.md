@@ -154,12 +154,17 @@ app/                    # Next.js App Router
 ├── (dashboard)/        # 认证后的仪表盘路由组
 │   ├── inbox/          # 消息收件箱（待开发）
 │   ├── review/         # 内容审核
-│   ├── content/        # 内容排期（待开发）
+│   ├── publish/        # 内容发布
 │   ├── trending/       # 热点雷达
 │   │   └── analytics/  # 热度分析（Recharts 图表）
 │   ├── workflows/      # 工作流配置
+│   ├── settings/       # 设置页面
+│   │   └── accounts/   # 社媒账号管理
 │   └── admin/users/    # 用户管理
 ├── api/                # Route Handlers
+│   ├── accounts/       # 社媒账号 CRUD API
+│   ├── oauth/          # OAuth 回调（YouTube 等）
+│   ├── publish/        # 发布任务 API
 │   ├── trendings/      # 热度 API
 │   │   ├── analytics/  # 分析 API（history/compare/sources）
 │   │   └── search/     # IP 搜索 API
@@ -168,6 +173,7 @@ app/                    # Next.js App Router
 components/
 ├── ui/                 # shadcn/ui 组件
 ├── layout/             # 布局组件（Sidebar、UserNav）
+├── settings/accounts/  # 账号管理组件
 ├── trending/           # 热点雷达组件
 │   └── analytics/      # 分析图表组件
 └── workflows/          # 工作流组件
@@ -179,6 +185,7 @@ lib/
 └── n8n.ts              # n8n API 封装
 types/                  # TypeScript 类型定义
 prisma/                 # Prisma Schema 和种子数据
+n8n-workflows/          # n8n 工作流 JSON 文件
 ```
 
 ## 数据模型
@@ -189,9 +196,13 @@ prisma/                 # Prisma Schema 和种子数据
 - **Entry** - IP 条目表（单个作品/季度，含审核状态、外部平台 ID）
 - **Trending** - 系列级热度追踪（多源热度 + AI 周边潜力评估）
 - **TrendingHistory** - 热度历史时序数据（TimescaleDB hypertable）
+- **SocialAccount** - 社媒账号（支持 YouTube/Instagram/Threads OAuth）
+- **PublishTask** - 发布任务（多平台定时发布）
+- **PublishPlatformContent** - 平台定制文案（含 YouTube 专属配置）
+- **PublishRecord** - 发布执行记录
 - **SystemConfig** - 系统配置键值存储
 
-关键枚举：`IpType`（ANIME/GAME/MANGA/LIGHT_NOVEL/VTUBER/MOVIE/OTHER）、`ReviewStatus`（PENDING/APPROVED/REJECTED）、`TrendingStatus`（WATCHING/FOCUSED/IN_PROGRESS/ARCHIVED）、`TrendingSource`
+关键枚举：`IpType`（ANIME/GAME/MANGA/LIGHT_NOVEL/VTUBER/MOVIE/OTHER）、`ReviewStatus`（PENDING/APPROVED/REJECTED）、`TrendingStatus`（WATCHING/FOCUSED/IN_PROGRESS/ARCHIVED）、`TrendingSource`、`PublishPlatform`（INSTAGRAM/THREADS/YOUTUBE）、`PublishStatus`
 
 ## n8n 集成
 
@@ -202,7 +213,7 @@ prisma/                 # Prisma Schema 和种子数据
 - `triggerWorkflow()` - 触发 Webhook 工作流
 - `toggleN8NWorkflow()` - 激活/停用工作流
 
-**实际部署的工作流：**
+**实际部署的工作流（`n8n-workflows/`）：**
 
 | 文件 | 触发方式 | 功能 |
 |------|---------|------|
@@ -210,6 +221,8 @@ prisma/                 # Prisma Schema 和种子数据
 | `sop-02-popularity-refresh.json` | 每天 03:00 | 热度全量刷新 |
 | `sop-02-google-trends.json` | 每天 04:00 | Google Trends 采集 |
 | `sop-02-reddit-monitor.json` | 每天 05:00 | Reddit Karma 采集 |
+| `sop-05-publish-content.json` | Webhook | 内容发布到社媒平台 |
+| `sop-06-schedule-check.json` | 每分钟 | 定时发布任务检查 |
 
 **审核流程：** n8n 同步 → entries (PENDING) → 人工审核 → 通过后创建 Series + Trending → 实时热点显示
 
@@ -229,6 +242,11 @@ DATABASE_URL="file:./dev.db"
 N8N_WEBHOOK_URL="http://localhost:5678"
 N8N_API_KEY=""                              # n8n API Key（工作流控制必需）
 NEXT_PUBLIC_N8N_URL="http://localhost:5678" # 客户端可访问的 n8n 地址
+
+# OAuth（YouTube 等社媒平台）
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
 
 # Docker 环境
 DATABASE_URL="postgresql://postgres:postgres@db:5432/moedesk"

@@ -130,7 +130,7 @@ export function AccountSelector({ platform, selectedIds, onChange }: AccountSele
               <div className="flex-1 flex items-center gap-2">
                 <span className="text-sm font-medium">{account.accountName}</span>
                 {isDisabled && (
-                  <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                  <Badge variant="outline" className="text-status-warning border-status-warning/50 text-xs">
                     待创建频道
                   </Badge>
                 )}

@@ -105,7 +105,7 @@ export function WorkflowTable({ workflows }: WorkflowTableProps) {
                           className={cn(
                             "gap-1",
                             workflow.triggerType === "webhook" &&
-                              "bg-purple-100 text-purple-700 hover:bg-purple-100"
+                              "bg-type-anime-bg text-type-anime hover:bg-type-anime-bg"
                           )}
                         >
                           {workflow.triggerType === "schedule" ? (
@@ -156,7 +156,7 @@ export function WorkflowTable({ workflows }: WorkflowTableProps) {
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    <span className="text-green-600">
+                    <span className="text-status-success">
                       {workflow.runtime.executionStats.success}
                     </span>
                     <span className="text-muted-foreground">/</span>

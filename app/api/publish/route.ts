@@ -2,6 +2,17 @@ import { NextRequest } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { TaskListReq, CreateTaskReq } from "./schema"
+import type { PublishPlatform, PublishStatus } from "@/types/publish"
+
+/** PublishTask Where 条件类型 */
+interface PublishTaskWhereInput {
+  status?: PublishStatus
+  platforms?: { has: PublishPlatform }
+  OR?: Array<{
+    title?: { contains: string; mode: "insensitive" }
+    series?: { titleChinese: { contains: string; mode: "insensitive" } }
+  }>
+}
 
 /**
  * GET /api/publish - 获取任务列表
@@ -24,8 +35,7 @@ export async function GET(request: NextRequest) {
 
   const { status, platform, search, page, pageSize } = parsed.data
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {}
+  const where: PublishTaskWhereInput = {}
 
   if (status) {
     where.status = status

@@ -8,31 +8,31 @@ import type { IpType } from "@/types/trending"
 const TYPE_CONFIG: Record<IpType, { label: string; className: string }> = {
   ANIME: {
     label: "番剧",
-    className: "bg-purple-100 text-purple-700 hover:bg-purple-100",
+    className: "bg-type-anime-bg text-type-anime hover:bg-type-anime-bg",
   },
   GAME: {
     label: "游戏",
-    className: "bg-blue-100 text-blue-700 hover:bg-blue-100",
+    className: "bg-type-game-bg text-type-game hover:bg-type-game-bg",
   },
   MANGA: {
     label: "漫画",
-    className: "bg-green-100 text-green-700 hover:bg-green-100",
+    className: "bg-type-manga-bg text-type-manga hover:bg-type-manga-bg",
   },
   LIGHT_NOVEL: {
     label: "轻小说",
-    className: "bg-pink-100 text-pink-700 hover:bg-pink-100",
+    className: "bg-type-novel-bg text-type-novel hover:bg-type-novel-bg",
   },
   VTUBER: {
     label: "VTuber",
-    className: "bg-orange-100 text-orange-700 hover:bg-orange-100",
+    className: "bg-type-vtuber-bg text-type-vtuber hover:bg-type-vtuber-bg",
   },
   MOVIE: {
     label: "剧场版",
-    className: "bg-amber-100 text-amber-700 hover:bg-amber-100",
+    className: "bg-type-movie-bg text-type-movie hover:bg-type-movie-bg",
   },
   OTHER: {
     label: "其他",
-    className: "bg-gray-100 text-gray-700 hover:bg-gray-100",
+    className: "bg-type-other-bg text-type-other hover:bg-type-other-bg",
   },
 }
 

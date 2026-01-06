@@ -248,7 +248,7 @@ export function EntryItem({
                     {item.endDate ? (
                       <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
                     ) : item.releaseDate ? (
-                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                      <Badge variant="default" className="text-xs px-1.5 py-0 bg-status-success">放送中</Badge>
                     ) : null}
                     <span className="text-muted-foreground">
                       {formatDate(item.releaseDate)}{item.releaseDate && item.endDate && " - "}{formatDate(item.endDate)}
@@ -484,7 +484,7 @@ export function EntryItem({
                   {parsedTitle && parsedTitle.confidence < 0.9 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                        <AlertCircle className="h-3.5 w-3.5 text-status-warning" />
                       </TooltipTrigger>
                       <TooltipContent>
                         解析置信度较低，建议核实系列名称

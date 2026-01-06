@@ -27,7 +27,7 @@ export function WorkflowStatusBadge({
     active: {
       label: "活跃",
       variant: "default" as const,
-      className: "bg-green-600 hover:bg-green-600",
+      className: "bg-status-success hover:bg-status-success",
     },
     inactive: {
       label: "停用",
@@ -59,7 +59,7 @@ export function ExecutionStatusBadge({ status }: ExecutionStatusBadgeProps) {
     success: {
       label: "成功",
       variant: "default" as const,
-      className: "bg-green-600 hover:bg-green-600",
+      className: "bg-status-success hover:bg-status-success",
     },
     error: {
       label: "失败",
@@ -69,7 +69,7 @@ export function ExecutionStatusBadge({ status }: ExecutionStatusBadgeProps) {
     running: {
       label: "运行中",
       variant: "secondary" as const,
-      className: "bg-blue-600 text-white hover:bg-blue-600",
+      className: "bg-status-info text-white hover:bg-status-info",
     },
     waiting: {
       label: "等待中",

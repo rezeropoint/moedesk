@@ -136,7 +136,7 @@ export function HeatSurgePanel() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <TrendingUp className="h-4 w-4 text-orange-500" />
+            <TrendingUp className="h-4 w-4 text-type-vtuber" />
             热度飙升
             <span className="text-xs font-normal text-muted-foreground">7日</span>
           </CardTitle>
@@ -303,7 +303,7 @@ export function HeatSurgePanel() {
                   className={cn(
                     "flex items-center gap-3 p-2 rounded-lg transition-colors",
                     isTop
-                      ? "bg-orange-50 dark:bg-orange-950/20"
+                      ? "bg-type-vtuber-bg"
                       : "bg-muted/50 hover:bg-muted"
                   )}
                 >
@@ -312,7 +312,7 @@ export function HeatSurgePanel() {
                     className={cn(
                       "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                       isTop
-                        ? "bg-orange-500 text-white"
+                        ? "bg-type-vtuber text-white"
                         : "bg-muted-foreground/20 text-muted-foreground"
                     )}
                   >
@@ -352,10 +352,10 @@ export function HeatSurgePanel() {
                       className={cn(
                         "text-xs",
                         item.compositeChange >= 100
-                          ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400"
+                          ? "bg-status-error-bg text-status-error"
                           : item.compositeChange >= 50
-                            ? "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400"
-                            : "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400"
+                            ? "bg-status-warning-bg text-status-warning"
+                            : "bg-status-success-bg text-status-success"
                       )}
                     >
                       <ArrowUpRight className="h-3 w-3 mr-0.5" />

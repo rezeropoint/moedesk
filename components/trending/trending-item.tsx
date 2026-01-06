@@ -93,7 +93,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0",
               isHot
-                ? "bg-gradient-to-br from-amber-100 to-amber-200 text-amber-800"
+                ? "bg-gradient-to-br from-status-warning-bg to-status-warning-bg text-status-warning"
                 : "bg-muted text-muted-foreground"
             )}
           >
@@ -157,7 +157,7 @@ export function TrendingItem({ item }: TrendingItemProps) {
                       {item.series.endDate ? (
                         <Badge variant="secondary" className="text-xs px-1.5 py-0">已完结</Badge>
                       ) : item.series.releaseDate ? (
-                        <Badge variant="default" className="text-xs px-1.5 py-0 bg-green-600">放送中</Badge>
+                        <Badge variant="default" className="text-xs px-1.5 py-0 bg-status-success">放送中</Badge>
                       ) : null}
                       <span className="text-muted-foreground">
                         {formatDate(item.series.releaseDate)}{item.series.releaseDate && item.series.endDate && " - "}{formatDate(item.series.endDate)}
@@ -174,9 +174,9 @@ export function TrendingItem({ item }: TrendingItemProps) {
             {/* 第四行：社媒热度 */}
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <DataLevelBadge level="series" />
-              <span><span className="text-orange-600">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
-              <span><span className="text-blue-400">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
-              <span><span className="text-green-600">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
+              <span><span className="text-brand-reddit">Reddit</span> <strong className="text-foreground">{formatHeatValue(item.heatData.redditKarma)}</strong></span>
+              <span><span className="text-brand-twitter">Twitter/X</span> <strong className="text-foreground">{formatHeatValue(item.heatData.twitterMentions)}</strong></span>
+              <span><span className="text-brand-google">Google</span> <strong className="text-foreground">{formatHeatValue(item.heatData.googleTrend)}</strong></span>
               <span><span className="text-brand-bilibili">B站</span> <strong className="text-foreground">{formatHeatValue(item.heatData.biliDanmaku)}</strong></span>
             </div>
           </div>
@@ -342,19 +342,19 @@ export function TrendingItem({ item }: TrendingItemProps) {
                 <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.redditKarma)}
                 </div>
-                <div className="text-xs text-orange-600">Reddit</div>
+                <div className="text-xs text-brand-reddit">Reddit</div>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
                 <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.twitterMentions)}
                 </div>
-                <div className="text-xs text-blue-400">Twitter/X</div>
+                <div className="text-xs text-brand-twitter">Twitter/X</div>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
                 <div className="text-lg font-bold text-foreground">
                   {formatHeatValue(item.heatData.googleTrend)}
                 </div>
-                <div className="text-xs text-green-600">Google</div>
+                <div className="text-xs text-brand-google">Google</div>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
                 <div className="text-lg font-bold text-foreground">

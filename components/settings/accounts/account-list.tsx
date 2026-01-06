@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,30 +63,44 @@ const platformIcons: Record<PublishPlatform, React.ElementType> = {
 
 export function AccountList({ accounts, onUpdate }: AccountListProps) {
   const [editAccount, setEditAccount] = useState<SocialAccount | null>(null)
-  const [refreshingId, setRefreshingId] = useState<string | null>(null)
+  const [refreshingChannelId, setRefreshingChannelId] = useState<string | null>(null)
 
   const handleReauthorize = () => {
     // 跳转到 YouTube 授权
     window.location.href = "/api/oauth/youtube/authorize"
   }
 
-  const handleRefreshToken = async (accountId: string) => {
-    setRefreshingId(accountId)
+  const handleRefreshChannel = async (accountId: string) => {
+    setRefreshingChannelId(accountId)
     try {
-      const response = await fetch(`/api/accounts/${accountId}/refresh-token`, {
+      const response = await fetch(`/api/accounts/${accountId}/refresh-channel`, {
         method: "POST",
       })
-      if (response.ok) {
-        onUpdate()
-      } else {
-        const result = await response.json()
-        alert(result.error || "刷新失败")
+      const result = await response.json()
+
+      if (!response.ok) {
+        toast.error(result.error || "刷新失败")
+        return
+      }
+
+      switch (result.status) {
+        case "no_channel":
+          toast.warning("该 Google 账号暂无 YouTube 频道，请先在 YouTube 上创建频道")
+          break
+        case "updated":
+          toast.success("频道信息刷新成功")
+          onUpdate()
+          break
+        case "multi_channel":
+          // 跳转到频道选择页面
+          window.location.href = result.redirectUrl
+          break
       }
     } catch (error) {
-      console.error("Refresh token failed:", error)
-      alert("网络错误，请重试")
+      console.error("Refresh channel failed:", error)
+      toast.error("网络错误，请重试")
     } finally {
-      setRefreshingId(null)
+      setRefreshingChannelId(null)
     }
   }
 
@@ -141,9 +156,10 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
               const platformConfig = PLATFORM_CONFIGS[account.platform]
               const statusConfig = ACCOUNT_STATUS_CONFIGS[account.status]
               const Icon = platformIcons[account.platform]
+              const isRefreshing = refreshingChannelId === account.id
 
               return (
-                <TableRow key={account.id}>
+                <TableRow key={account.id} className={cn(isRefreshing && "opacity-50")}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -167,7 +183,7 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
                           )}
                           {/* 无频道提示 */}
                           {account.platform === "YOUTUBE" && !account.accountId && (
-                            <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            <Badge variant="outline" className="text-status-warning border-status-warning/50">
                               待创建频道
                             </Badge>
                           )}
@@ -230,23 +246,23 @@ export function AccountList({ accounts, onUpdate }: AccountListProps) {
                           <Pencil className="mr-2 h-4 w-4" />
                           编辑
                         </DropdownMenuItem>
-                        {/* YouTube 刷新 Token */}
+                        {/* YouTube 刷新频道信息 */}
                         {account.platform === "YOUTUBE" && account.status === "ACTIVE" && (
                           <DropdownMenuItem
-                            onClick={() => handleRefreshToken(account.id)}
-                            disabled={refreshingId === account.id}
+                            onClick={() => handleRefreshChannel(account.id)}
+                            disabled={refreshingChannelId === account.id}
                           >
                             <RefreshCw className={cn(
                               "mr-2 h-4 w-4",
-                              refreshingId === account.id && "animate-spin"
+                              refreshingChannelId === account.id && "animate-spin"
                             )} />
-                            刷新 Token
+                            {account.accountId ? "刷新频道信息" : "刷新频道"}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleToggleStatus(account)}
-                          className={account.status === "DISABLED" ? "text-green-600" : "text-yellow-600"}
+                          className={account.status === "DISABLED" ? "text-status-success" : "text-status-warning"}
                         >
                           {account.status === "DISABLED" ? (
                             <>

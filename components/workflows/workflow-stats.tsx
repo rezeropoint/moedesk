@@ -23,8 +23,8 @@ export function WorkflowStatsCards({ stats }: WorkflowStatsCardsProps) {
       value: stats.active,
       total: stats.total,
       icon: Activity,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-status-success",
+      bgColor: "bg-status-success-bg",
     },
     {
       title: "停用工作流",
@@ -47,15 +47,15 @@ export function WorkflowStatsCards({ stats }: WorkflowStatsCardsProps) {
       value: stats.todayExecutions,
       description: "次",
       icon: CheckCircle,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
+      color: "text-status-info",
+      bgColor: "bg-status-info-bg",
     },
     {
       title: "成功率",
       value: `${stats.successRate}%`,
       icon: TrendingUp,
-      color: stats.successRate >= 90 ? "text-green-600" : "text-amber-600",
-      bgColor: stats.successRate >= 90 ? "bg-green-100" : "bg-amber-100",
+      color: stats.successRate >= 90 ? "text-status-success" : "text-status-warning",
+      bgColor: stats.successRate >= 90 ? "bg-status-success-bg" : "bg-status-warning-bg",
     },
   ]
 

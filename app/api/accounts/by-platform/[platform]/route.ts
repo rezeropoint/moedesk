@@ -3,6 +3,14 @@ import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { PublishPlatformSchema, AccountsByPlatformReq } from "../../schema"
 import type { PublishPlatform } from "@/types/publish"
+import type { SocialAccountStatus } from "@/types/social-account"
+
+/** SocialAccount Where 条件类型 */
+interface SocialAccountWhereInput {
+  userId: string
+  platform: PublishPlatform
+  status?: SocialAccountStatus
+}
 
 type RouteContext = { params: Promise<{ platform: string }> }
 
@@ -36,8 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { activeOnly } = parsed.data
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {
+  const where: SocialAccountWhereInput = {
     userId: session.user.id,
     platform: platformParsed.data as PublishPlatform,
   }

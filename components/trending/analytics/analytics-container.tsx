@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { Label } from "@/components/ui/label"
 import { AnalyticsHeader } from "./analytics-header"
 import { IpSelector } from "./ip-selector"
 import { TimeRangeTabs } from "./time-range-tabs"
@@ -131,7 +132,7 @@ export function AnalyticsContainer({ initialIps }: AnalyticsContainerProps) {
 
       {/* IP 选择器 */}
       <div className="bg-card rounded-lg border p-4">
-        <label className="text-sm font-medium mb-2 block">选择 IP</label>
+        <Label className="text-sm font-medium mb-2 block">选择 IP</Label>
         <IpSelector
           selectedIps={selectedIps}
           onSelect={handleSelectIp}

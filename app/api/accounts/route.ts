@@ -2,6 +2,16 @@ import { NextRequest } from "next/server"
 import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { AccountListReq, CreateAccountReq } from "./schema"
+import type { PublishPlatform } from "@/types/publish"
+import type { SocialAccountStatus } from "@/types/social-account"
+
+/** SocialAccount Where 条件类型 */
+interface SocialAccountWhereInput {
+  userId: string
+  platform?: PublishPlatform
+  status?: SocialAccountStatus
+  accountName?: { contains: string; mode: "insensitive" }
+}
 
 /**
  * GET /api/accounts - 获取当前用户的账号列表
@@ -24,8 +34,7 @@ export async function GET(request: NextRequest) {
 
   const { platform, status, search, page, pageSize } = parsed.data
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { userId: session.user.id }
+  const where: SocialAccountWhereInput = { userId: session.user.id }
 
   if (platform) {
     where.platform = platform

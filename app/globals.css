@@ -53,6 +53,33 @@
   --color-brand-instagram: var(--brand-instagram);
   --color-brand-youtube: var(--brand-youtube);
   --color-brand-threads: var(--brand-threads);
+  --color-brand-reddit: var(--brand-reddit);
+  --color-brand-twitter: var(--brand-twitter);
+  --color-brand-google: var(--brand-google);
+  /* 状态色 */
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-error: var(--status-error);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+  /* IP 类型色 */
+  --color-type-anime: var(--type-anime);
+  --color-type-anime-bg: var(--type-anime-bg);
+  --color-type-game: var(--type-game);
+  --color-type-game-bg: var(--type-game-bg);
+  --color-type-manga: var(--type-manga);
+  --color-type-manga-bg: var(--type-manga-bg);
+  --color-type-novel: var(--type-novel);
+  --color-type-novel-bg: var(--type-novel-bg);
+  --color-type-vtuber: var(--type-vtuber);
+  --color-type-vtuber-bg: var(--type-vtuber-bg);
+  --color-type-movie: var(--type-movie);
+  --color-type-movie-bg: var(--type-movie-bg);
+  --color-type-other: var(--type-other);
+  --color-type-other-bg: var(--type-other-bg);
 }
 
 :root {
@@ -85,6 +112,33 @@
   --brand-instagram: oklch(0.65 0.25 350);  /* #E4405F */
   --brand-youtube: oklch(0.6 0.25 27);      /* #FF0000 */
   --brand-threads: oklch(0.2 0 0);          /* #000000 */
+  --brand-reddit: oklch(0.6 0.2 30);        /* #FF4500 */
+  --brand-twitter: oklch(0.6 0.15 230);     /* #1DA1F2 */
+  --brand-google: oklch(0.6 0.2 145);       /* #34A853 */
+  /* 状态色 */
+  --status-success: oklch(0.55 0.15 145);   /* green-600 */
+  --status-success-bg: oklch(0.95 0.05 145); /* green-100 */
+  --status-warning: oklch(0.65 0.15 75);    /* amber-500 */
+  --status-warning-bg: oklch(0.95 0.05 85); /* amber-100 */
+  --status-error: oklch(0.55 0.2 25);       /* red-600 */
+  --status-error-bg: oklch(0.97 0.02 25);   /* red-50 */
+  --status-info: oklch(0.55 0.15 250);      /* blue-600 */
+  --status-info-bg: oklch(0.95 0.03 250);   /* blue-100 */
+  /* IP 类型色 */
+  --type-anime: oklch(0.5 0.2 300);         /* purple-700 */
+  --type-anime-bg: oklch(0.95 0.05 300);    /* purple-100 */
+  --type-game: oklch(0.55 0.15 250);        /* blue-700 */
+  --type-game-bg: oklch(0.95 0.03 250);     /* blue-100 */
+  --type-manga: oklch(0.5 0.15 145);        /* green-700 */
+  --type-manga-bg: oklch(0.95 0.05 145);    /* green-100 */
+  --type-novel: oklch(0.55 0.2 350);        /* pink-700 */
+  --type-novel-bg: oklch(0.95 0.05 350);    /* pink-100 */
+  --type-vtuber: oklch(0.55 0.18 45);       /* orange-700 */
+  --type-vtuber-bg: oklch(0.95 0.05 55);    /* orange-100 */
+  --type-movie: oklch(0.55 0.15 75);        /* amber-700 */
+  --type-movie-bg: oklch(0.95 0.05 85);     /* amber-100 */
+  --type-other: oklch(0.45 0 0);            /* gray-700 */
+  --type-other-bg: oklch(0.95 0.005 0);     /* gray-100 */
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -119,6 +173,30 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  /* 状态色（深色模式） */
+  --status-success: oklch(0.65 0.15 145);   /* green-400 */
+  --status-success-bg: oklch(0.25 0.05 145); /* green-950 */
+  --status-warning: oklch(0.75 0.15 75);    /* amber-400 */
+  --status-warning-bg: oklch(0.25 0.05 85); /* amber-950 */
+  --status-error: oklch(0.65 0.2 25);       /* red-400 */
+  --status-error-bg: oklch(0.25 0.05 25);   /* red-950 */
+  --status-info: oklch(0.65 0.15 250);      /* blue-400 */
+  --status-info-bg: oklch(0.25 0.03 250);   /* blue-950 */
+  /* IP 类型色（深色模式） */
+  --type-anime: oklch(0.7 0.2 300);         /* purple-400 */
+  --type-anime-bg: oklch(0.25 0.05 300);    /* purple-950 */
+  --type-game: oklch(0.65 0.15 250);        /* blue-400 */
+  --type-game-bg: oklch(0.25 0.03 250);     /* blue-950 */
+  --type-manga: oklch(0.65 0.15 145);       /* green-400 */
+  --type-manga-bg: oklch(0.25 0.05 145);    /* green-950 */
+  --type-novel: oklch(0.7 0.2 350);         /* pink-400 */
+  --type-novel-bg: oklch(0.25 0.05 350);    /* pink-950 */
+  --type-vtuber: oklch(0.7 0.18 45);        /* orange-400 */
+  --type-vtuber-bg: oklch(0.25 0.05 55);    /* orange-950 */
+  --type-movie: oklch(0.75 0.15 75);        /* amber-400 */
+  --type-movie-bg: oklch(0.25 0.05 85);     /* amber-950 */
+  --type-other: oklch(0.65 0 0);            /* gray-400 */
+  --type-other-bg: oklch(0.2 0.005 0);      /* gray-900 */
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);

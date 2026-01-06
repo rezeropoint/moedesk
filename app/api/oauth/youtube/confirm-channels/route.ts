@@ -24,6 +24,8 @@ interface TempAuthData {
 
 interface RequestBody {
   channelIds: string[]
+  /** 刷新模式：更新现有账号而非创建新账号 */
+  updatingAccountId?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -54,9 +56,25 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "请求格式错误" }, { status: 400 })
   }
 
-  const { channelIds } = body
+  const { channelIds, updatingAccountId } = body
   if (!Array.isArray(channelIds) || channelIds.length === 0) {
     return Response.json({ error: "请选择至少一个频道" }, { status: 400 })
+  }
+
+  // 刷新模式下只能选择一个频道
+  if (updatingAccountId && channelIds.length > 1) {
+    return Response.json({ error: "刷新模式下只能选择一个频道" }, { status: 400 })
+  }
+
+  // 验证更新账号的所有权
+  if (updatingAccountId) {
+    const existingAccount = await db.socialAccount.findUnique({
+      where: { id: updatingAccountId },
+      select: { userId: true },
+    })
+    if (!existingAccount || existingAccount.userId !== session.user.id) {
+      return Response.json({ error: "无权更新此账号" }, { status: 403 })
+    }
   }
 
   const { tokens, userinfo, channels } = tempData
@@ -70,7 +88,61 @@ export async function POST(request: NextRequest) {
 
   const createdIds: string[] = []
 
-  // 为每个选中的频道创建账号
+  // 刷新模式：更新现有账号
+  if (updatingAccountId) {
+    const channel = selectedChannels[0]
+    const accountName = channel.snippet.title
+    const channelId = channel.id
+
+    // 构建频道 URL
+    const channelUrl = channel.snippet.customUrl
+      ? `https://youtube.com/${channel.snippet.customUrl}`
+      : `https://youtube.com/channel/${channel.id}`
+
+    // 构建头像 URL
+    const avatarUrl =
+      channel.snippet.thumbnails.high?.url ||
+      channel.snippet.thumbnails.medium?.url ||
+      channel.snippet.thumbnails.default.url
+
+    // 构建频道统计
+    const channelStats = {
+      subscriberCount: channel.statistics.hiddenSubscriberCount
+        ? 0
+        : parseInt(channel.statistics.subscriberCount) || 0,
+      videoCount: parseInt(channel.statistics.videoCount) || 0,
+      viewCount: parseInt(channel.statistics.viewCount) || 0,
+      fetchedAt: new Date().toISOString(),
+    }
+
+    await db.socialAccount.update({
+      where: { id: updatingAccountId },
+      data: {
+        accountId: channelId,
+        accountName,
+        accountUrl: channelUrl,
+        avatarUrl,
+        channelStats,
+        status: "ACTIVE",
+      },
+    })
+
+    createdIds.push(updatingAccountId)
+    console.log("[OAuth] 刷新频道信息:", accountName)
+
+    // 清除临时数据和刷新标记
+    cookieStore.delete("youtube_temp_auth")
+    cookieStore.delete("updating_account_id")
+
+    return Response.json({
+      data: {
+        updated: 1,
+        accountIds: createdIds,
+      },
+    })
+  }
+
+  // 新绑定模式：为每个选中的频道创建账号
   for (const channel of selectedChannels) {
     const accountName = channel.snippet.title
     const accountId = channel.id
