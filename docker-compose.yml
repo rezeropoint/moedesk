@@ -5,7 +5,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3443:3000"
+    env_file:
+      - .env.docker
     environment:
+      # 这些会覆盖 .env.docker 中的同名变量
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/moedesk
       - N8N_WEBHOOK_URL=http://n8n:5678
       - SECURE_COOKIE=false
