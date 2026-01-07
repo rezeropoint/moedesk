@@ -75,16 +75,16 @@ export default function PublishPage() {
   }, [fetchTasks, fetchStats])
 
   // 刷新数据
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true)
     await Promise.all([fetchTasks(), fetchStats()])
     setIsRefreshing(false)
-  }
+  }, [fetchTasks, fetchStats])
 
   // 任务创建成功回调
-  const handleTaskCreated = () => {
+  const handleTaskCreated = useCallback(() => {
     handleRefresh()
-  }
+  }, [handleRefresh])
 
   // 任务更新回调
   const handleTaskUpdate = async () => {

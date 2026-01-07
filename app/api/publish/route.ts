@@ -153,41 +153,42 @@ export async function POST(request: NextRequest) {
     initialStatus = "SCHEDULED"
   }
 
-  const task = await db.publishTask.create({
-    data: {
-      title,
-      videoUrl: videoUrl || null,
-      coverUrl: coverUrl || null,
-      seriesId: seriesId || null,
-      platforms,
-      mode,
-      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      status: initialStatus,
-      createdBy: session.user.id,
-      platformContents: {
-        create: platforms.map((platform) => {
-          const content = platformContents?.find((c) => c.platform === platform)
-          return {
-            platform,
-            title: content?.title || null,
-            description: content?.description || null,
-            hashtags: content?.hashtags || [],
-            // YouTube 专属配置
-            youtubePrivacyStatus: content?.youtubePrivacyStatus || null,
-            youtubeCategoryId: content?.youtubeCategoryId || null,
-            youtubePlaylistIds: content?.youtubePlaylistIds || [],
-            youtubeThumbnailUrl: content?.youtubeThumbnailUrl || null,
-          }
-        }),
+  try {
+    const task = await db.publishTask.create({
+      data: {
+        title,
+        videoUrl: videoUrl || null,
+        coverUrl: coverUrl || null,
+        seriesId: seriesId || null,
+        platforms,
+        mode,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        status: initialStatus,
+        createdBy: session.user.id,
+        platformContents: {
+          create: platforms.map((platform) => {
+            const content = platformContents?.find((c) => c.platform === platform)
+            return {
+              platform,
+              title: content?.title || null,
+              description: content?.description || null,
+              hashtags: content?.hashtags || [],
+              // YouTube 专属配置
+              youtubePrivacyStatus: content?.youtubePrivacyStatus || null,
+              youtubeCategoryId: content?.youtubeCategoryId || null,
+              youtubePlaylistIds: content?.youtubePlaylistIds || [],
+              youtubeThumbnailUrl: content?.youtubeThumbnailUrl || null,
+            }
+          }),
+        },
       },
-    },
-    include: {
-      platformContents: true,
-      series: { select: { titleChinese: true, titleOriginal: true } },
-    },
-  })
+      include: {
+        platformContents: true,
+        series: { select: { titleChinese: true, titleOriginal: true } },
+      },
+    })
 
-  return Response.json(
+    return Response.json(
     {
       data: {
         id: task.id,
@@ -219,5 +220,12 @@ export async function POST(request: NextRequest) {
       },
     },
     { status: 201 }
-  )
+    )
+  } catch (error) {
+    console.error("创建发布任务失败:", error)
+    return Response.json(
+      { error: "创建任务失败", details: error instanceof Error ? error.message : "未知错误" },
+      { status: 500 }
+    )
+  }
 }

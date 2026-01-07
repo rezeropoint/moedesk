@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useState, useCallback } from "react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
@@ -82,13 +82,13 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
     },
   })
 
-  const selectedMode = form.watch("mode")
-  const selectedPlatforms = form.watch("platforms")
+  const selectedMode = useWatch({ control: form.control, name: "mode" })
+  const selectedPlatforms = useWatch({ control: form.control, name: "platforms" })
 
   // 更新单个平台的账号选择
-  const handleAccountsChange = (platform: PublishPlatform, accountIds: string[]) => {
+  const handleAccountsChange = useCallback((platform: PublishPlatform, accountIds: string[]) => {
     setPlatformAccounts(prev => ({ ...prev, [platform]: accountIds }))
-  }
+  }, [])
 
   async function handleSubmit(values: FormValues) {
     setIsSubmitting(true)
@@ -122,8 +122,10 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "创建失败")
+        const text = await response.text()
+        console.error("API Error Response:", response.status, text)
+        const error = text ? JSON.parse(text) : { error: `请求失败 (${response.status})` }
+        throw new Error(error.details || error.error || "创建失败")
       }
 
       setOpen(false)
