@@ -4,6 +4,20 @@ import { CallbackReq } from "../schema"
 import type { PublishStatus } from "@/types/publish"
 
 /**
+ * OPTIONS /api/publish/callback - CORS 预检请求
+ */
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  })
+}
+
+/**
  * POST /api/publish/callback - n8n 发布结果回调
  *
  * 此接口由 n8n 工作流调用，无需认证
@@ -28,6 +42,7 @@ export async function POST(request: NextRequest) {
   const {
     taskId,
     platform,
+    accountId,
     success,
     externalId,
     externalUrl,
@@ -50,6 +65,7 @@ export async function POST(request: NextRequest) {
     data: {
       taskId,
       platform,
+      accountId: accountId || null,
       status: success ? "PUBLISHED" : "FAILED",
       externalId: externalId || null,
       externalUrl: externalUrl || null,

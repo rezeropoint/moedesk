@@ -483,7 +483,7 @@ export function getExecutionUrl(executionId: string): string {
 export async function triggerWorkflow<T>(
   workflow: string,
   data: Record<string, unknown>
-): Promise<T> {
+): Promise<T | null> {
   const response = await fetch(`${N8N_BASE_URL}/webhook/${workflow}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -491,10 +491,22 @@ export async function triggerWorkflow<T>(
   })
 
   if (!response.ok) {
-    throw new Error(`Workflow ${workflow} failed: ${response.statusText}`)
+    const errorText = await response.text().catch(() => response.statusText)
+    throw new Error(`Workflow ${workflow} failed: ${errorText}`)
   }
 
-  return response.json()
+  // 处理空响应或非 JSON 响应
+  const text = await response.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    console.warn(`Workflow ${workflow} returned non-JSON response:`, text)
+    return null
+  }
 }
 
 /**

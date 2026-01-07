@@ -3,6 +3,14 @@ import { getSession } from "@/lib/auth/session"
 import { db } from "@/lib/db"
 import { triggerWorkflow } from "@/lib/n8n"
 import { TriggerPublishReq } from "../../schema"
+import { getValidAccessToken } from "@/lib/youtube"
+import type { PublishPlatform } from "@/types/publish"
+
+interface AccountCredential {
+  accountId: string    // SocialAccount.id
+  channelId: string    // YouTube 频道 ID
+  accessToken: string  // 解密后的有效 token
+}
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -41,6 +49,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     include: {
       platformContents: true,
       series: { select: { titleChinese: true, titleOriginal: true } },
+      taskAccounts: {
+        include: {
+          account: {
+            select: {
+              id: true,
+              platform: true,
+              accountId: true,
+              status: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -66,6 +86,61 @@ export async function POST(request: NextRequest, context: RouteContext) {
     )
   }
 
+  // 获取各平台的账号凭证
+  const accountCredentials: Partial<Record<PublishPlatform, AccountCredential>> = {}
+
+  for (const platform of platformsToPublish) {
+    // 找到该平台关联的账号
+    const taskAccount = task.taskAccounts.find(
+      (ta) => ta.account.platform === platform
+    )
+
+    if (!taskAccount) {
+      // YouTube 平台必须有账号
+      if (platform === "YOUTUBE") {
+        return Response.json(
+          { error: "YouTube 发布需要关联账号" },
+          { status: 400 }
+        )
+      }
+      continue
+    }
+
+    const account = taskAccount.account
+
+    // 检查账号状态
+    if (account.status === "EXPIRED") {
+      return Response.json(
+        { error: `账号 ${account.accountId || account.id} 授权已过期，请重新授权` },
+        { status: 400 }
+      )
+    }
+
+    if (account.status === "DISABLED") {
+      return Response.json(
+        { error: `账号 ${account.accountId || account.id} 已被禁用` },
+        { status: 400 }
+      )
+    }
+
+    // 获取有效的 access token
+    if (platform === "YOUTUBE") {
+      const accessToken = await getValidAccessToken(account.id)
+      if (!accessToken) {
+        return Response.json(
+          { error: `YouTube 账号授权已过期，请重新授权` },
+          { status: 400 }
+        )
+      }
+
+      accountCredentials.YOUTUBE = {
+        accountId: account.id,
+        channelId: account.accountId || "",
+        accessToken,
+      }
+    }
+  }
+
   // 更新状态为发布中
   await db.publishTask.update({
     where: { id },
@@ -88,7 +163,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
           title: c.title,
           description: c.description,
           hashtags: c.hashtags,
+          // YouTube 专属配置
+          youtubePrivacyStatus: c.youtubePrivacyStatus,
+          youtubeCategoryId: c.youtubeCategoryId,
+          youtubePlaylistIds: c.youtubePlaylistIds,
+          youtubeThumbnailUrl: c.youtubeThumbnailUrl,
         })),
+      // 账号凭证
+      accountCredentials,
     }
 
     await triggerWorkflow("sop-05-publish-content", workflowData)

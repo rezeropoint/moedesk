@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// 解析请求数据\nconst body = $input.first().json.body;\nconst { taskId, title, videoUrl, coverUrl, seriesTitle, platforms, platformContents } = body;\n\nif (!taskId || !platforms?.length) {\n  throw new Error('Missing required fields: taskId or platforms');\n}\n\n// 为每个平台生成发布任务\nconst publishJobs = platforms.map(platform => {\n  const content = platformContents?.find(c => c.platform === platform) || {};\n  return {\n    json: {\n      taskId,\n      platform,\n      title: content.title || title,\n      description: content.description || '',\n      hashtags: content.hashtags || [],\n      videoUrl,\n      coverUrl,\n      seriesTitle,\n    }\n  };\n});\n\nreturn publishJobs;"
+        "jsCode": "// 解析请求数据\nconst body = $input.first().json.body;\nconst { taskId, title, videoUrl, coverUrl, seriesTitle, platforms, platformContents, accountCredentials } = body;\n\nif (!taskId || !platforms?.length) {\n  throw new Error('Missing required fields: taskId or platforms');\n}\n\n// 为每个平台生成发布任务\nconst publishJobs = platforms.map(platform => {\n  const content = platformContents?.find(c => c.platform === platform) || {};\n  const credentials = accountCredentials?.[platform];\n  \n  return {\n    json: {\n      taskId,\n      platform,\n      title: content.title || title,\n      description: content.description || '',\n      hashtags: content.hashtags || [],\n      videoUrl,\n      coverUrl,\n      seriesTitle,\n      // YouTube 专属配置\n      youtubePrivacyStatus: content.youtubePrivacyStatus || 'public',\n      youtubeCategoryId: content.youtubeCategoryId || '22',\n      youtubePlaylistIds: content.youtubePlaylistIds || [],\n      youtubeThumbnailUrl: content.youtubeThumbnailUrl,\n      // 账号凭证\n      credentials,\n    }\n  };\n});\n\nreturn publishJobs;"
       },
       "id": "c9a0f8e0-0002-4000-8000-000000000002",
       "name": "准备发布数据",
@@ -26,77 +26,472 @@
     },
     {
       "parameters": {
-        "amount": 2,
-        "unit": "seconds"
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "YOUTUBE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "YOUTUBE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "INSTAGRAM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "INSTAGRAM"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.platform }}",
+                    "rightValue": "THREADS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "THREADS"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "c9a0f8e0-0003-4000-8000-000000000003",
-      "name": "模拟发布延迟",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
+      "id": "c9a0f8e0-0010-4000-8000-000000000010",
+      "name": "平台路由",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
       "position": [440, 300]
     },
     {
       "parameters": {
-        "jsCode": "// 模拟发布结果\nconst item = $input.first().json;\nconst success = Math.random() > 0.1; // 90% 成功率\n\nconst platformUrls = {\n  INSTAGRAM: 'https://instagram.com/p/',\n  THREADS: 'https://threads.net/@moedesk/post/',\n  YOUTUBE: 'https://youtube.com/shorts/',\n};\n\nconst result = {\n  taskId: item.taskId,\n  platform: item.platform,\n  success,\n  externalId: success ? `${item.platform.toLowerCase()}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` : null,\n  externalUrl: success ? `${platformUrls[item.platform] || 'https://example.com/'}${Date.now()}` : null,\n  errorMessage: success ? null : 'API rate limit exceeded (simulated error)',\n  publishedAt: success ? new Date().toISOString() : null,\n};\n\nreturn [{ json: result }];"
+        "method": "GET",
+        "url": "={{ $json.videoUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 300000
+        }
       },
-      "id": "c9a0f8e0-0004-4000-8000-000000000004",
-      "name": "模拟发布结果",
+      "id": "c9a0f8e0-0011-4000-8000-000000000011",
+      "name": "下载视频文件",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('准备发布数据').item.json.credentials.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Upload-Content-Type",
+              "value": "video/*"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"snippet\": {\n    \"title\": {{ JSON.stringify($('准备发布数据').item.json.title) }},\n    \"description\": {{ JSON.stringify($('准备发布数据').item.json.description) }},\n    \"tags\": {{ JSON.stringify(($('准备发布数据').item.json.hashtags || []).map(t => t.replace('#', ''))) }},\n    \"categoryId\": {{ JSON.stringify($('准备发布数据').item.json.youtubeCategoryId || '22') }}\n  },\n  \"status\": {\n    \"privacyStatus\": {{ JSON.stringify($('准备发布数据').item.json.youtubePrivacyStatus || 'public') }},\n    \"selfDeclaredMadeForKids\": false\n  }\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "c9a0f8e0-0012-4000-8000-000000000012",
+      "name": "YouTube 初始化上传",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并二进制数据和上传 URL\nconst uploadUrl = $input.first().json.headers?.location;\nconst binaryData = $('下载视频文件').first().binary;\nconst originalData = $('准备发布数据').item.json;\n\nreturn [{\n  json: {\n    uploadUrl,\n    accessToken: originalData.credentials?.accessToken,\n  },\n  binary: binaryData,\n}];"
+      },
+      "id": "c9a0f8e0-0012-b000-8000-000000000012",
+      "name": "合并上传数据",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 100]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $json.uploadUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "video/*"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "c9a0f8e0-0013-4000-8000-000000000013",
+      "name": "上传视频内容",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 生成 YouTube 发布回调数据\nconst originalData = $('准备发布数据').item.json;\nconst uploadResponse = $input.first().json;\n\n// YouTube API 返回的视频信息\nconst videoId = uploadResponse.id;\nconst success = !!videoId;\n\nreturn [{\n  json: {\n    taskId: originalData.taskId,\n    platform: 'YOUTUBE',\n    accountId: originalData.credentials?.accountId || null,\n    success,\n    externalId: videoId || null,\n    externalUrl: videoId ? `https://youtube.com/watch?v=${videoId}` : null,\n    errorMessage: success ? null : (uploadResponse.error?.message || 'Upload failed'),\n    publishedAt: success ? new Date().toISOString() : null,\n    // 额外信息供后续节点使用\n    videoId,\n    playlistIds: originalData.youtubePlaylistIds || [],\n    thumbnailUrl: originalData.youtubeThumbnailUrl,\n    accessToken: originalData.credentials?.accessToken,\n  }\n}];"
+      },
+      "id": "c9a0f8e0-0014-4000-8000-000000000014",
+      "name": "YouTube 结果处理",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-thumbnail",
+              "leftValue": "={{ $json.thumbnailUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "condition-success",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "c9a0f8e0-0015-4000-8000-000000000015",
+      "name": "检查缩略图",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1760, 100]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.thumbnailUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "c9a0f8e0-0016-4000-8000-000000000016",
+      "name": "下载缩略图",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId={{ $('YouTube 结果处理').item.json.videoId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('YouTube 结果处理').item.json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "image/jpeg"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "c9a0f8e0-0017-4000-8000-000000000017",
+      "name": "设置缩略图",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并缩略图结果\nconst ytResult = $('YouTube 结果处理').item.json;\nreturn [{ json: ytResult }];"
+      },
+      "id": "c9a0f8e0-0018-4000-8000-000000000018",
+      "name": "合并缩略图结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-playlist",
+              "leftValue": "={{ $json.playlistIds?.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "condition-success2",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "c9a0f8e0-0019-4000-8000-000000000019",
+      "name": "检查播放列表",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2640, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 为每个播放列表生成添加请求\nconst data = $input.first().json;\nconst playlistIds = data.playlistIds || [];\n\nreturn playlistIds.map(playlistId => ({\n  json: {\n    ...data,\n    currentPlaylistId: playlistId,\n  }\n}));"
+      },
+      "id": "c9a0f8e0-0020-4000-8000-000000000020",
+      "name": "展开播放列表",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.accessToken }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"snippet\": {\n    \"playlistId\": {{ JSON.stringify($json.currentPlaylistId) }},\n    \"resourceId\": {\n      \"kind\": \"youtube#video\",\n      \"videoId\": {{ JSON.stringify($json.videoId) }}\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "c9a0f8e0-0021-4000-8000-000000000021",
+      "name": "添加到播放列表",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3080, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 合并播放列表结果\nconst data = $('检查播放列表').item.json;\nreturn [{ json: data }];"
+      },
+      "id": "c9a0f8e0-0022-4000-8000-000000000022",
+      "name": "合并播放列表结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 0]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "c9a0f8e0-0023-4000-8000-000000000023",
+      "name": "汇总 YouTube 结果",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [3520, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 模拟 Instagram/Threads 发布（暂未实现）\nconst item = $input.first().json;\nconst success = false; // 暂不支持\n\nreturn [{\n  json: {\n    taskId: item.taskId,\n    platform: item.platform,\n    accountId: item.credentials?.accountId || null,\n    success,\n    externalId: null,\n    externalUrl: null,\n    errorMessage: `${item.platform} 平台发布暂未实现`,\n    publishedAt: null,\n  }\n}];"
+      },
+      "id": "c9a0f8e0-0030-4000-8000-000000000030",
+      "name": "Instagram 暂不支持",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [660, 300]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ $env.NEXTJS_URL || 'http://localhost:3000' }}/api/publish/callback",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 30000
-        }
+        "jsCode": "// 模拟 Threads 发布（暂未实现）\nconst item = $input.first().json;\nconst success = false; // 暂不支持\n\nreturn [{\n  json: {\n    taskId: item.taskId,\n    platform: item.platform,\n    accountId: item.credentials?.accountId || null,\n    success,\n    externalId: null,\n    externalUrl: null,\n    errorMessage: `${item.platform} 平台发布暂未实现`,\n    publishedAt: null,\n  }\n}];"
       },
-      "id": "c9a0f8e0-0005-4000-8000-000000000005",
-      "name": "回调更新状态",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [880, 300]
+      "id": "c9a0f8e0-0031-4000-8000-000000000031",
+      "name": "Threads 暂不支持",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 500]
     },
     {
       "parameters": {
-        "mode": "combine",
-        "mergeByFields": {
-          "values": []
-        },
-        "combinationMode": "multiplex",
-        "options": {}
+        "mode": "append"
       },
-      "id": "c9a0f8e0-0006-4000-8000-000000000006",
-      "name": "合并结果",
+      "id": "c9a0f8e0-0040-4000-8000-000000000040",
+      "name": "合并所有结果",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [1100, 300]
+      "position": [3740, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://app:3000/api/publish/callback",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"taskId\": {{ JSON.stringify($json.taskId) }},\n  \"platform\": {{ JSON.stringify($json.platform) }},\n  \"accountId\": {{ JSON.stringify($json.accountId) }},\n  \"success\": {{ $json.success }},\n  \"externalId\": {{ JSON.stringify($json.externalId) }},\n  \"externalUrl\": {{ JSON.stringify($json.externalUrl) }},\n  \"errorMessage\": {{ JSON.stringify($json.errorMessage) }},\n  \"publishedAt\": {{ JSON.stringify($json.publishedAt) }}\n}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "id": "c9a0f8e0-0041-4000-8000-000000000041",
+      "name": "回调更新状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3960, 300]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "c9a0f8e0-0042-4000-8000-000000000042",
+      "name": "汇总回调结果",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [4180, 300]
     },
     {
       "parameters": {
         "jsCode": "// 汇总所有发布结果\nconst items = $input.all();\nconst results = items.map(item => item.json);\n\nconst successCount = results.filter(r => r.success).length;\nconst failedCount = results.filter(r => !r.success).length;\n\nreturn [{\n  json: {\n    success: true,\n    message: '发布任务已处理',\n    summary: {\n      total: results.length,\n      success: successCount,\n      failed: failedCount,\n    },\n    results,\n  }\n}];"
       },
-      "id": "c9a0f8e0-0007-4000-8000-000000000007",
+      "id": "c9a0f8e0-0043-4000-8000-000000000043",
       "name": "生成响应",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1320, 300]
+      "position": [4400, 300]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}"
       },
-      "id": "c9a0f8e0-0008-4000-8000-000000000008",
+      "id": "c9a0f8e0-0044-4000-8000-000000000044",
       "name": "返回响应",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1540, 300]
+      "position": [4620, 300]
     }
   ],
   "connections": {
@@ -115,25 +510,229 @@
       "main": [
         [
           {
-            "node": "模拟发布延迟",
+            "node": "平台路由",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "模拟发布延迟": {
+    "平台路由": {
       "main": [
         [
           {
-            "node": "模拟发布结果",
+            "node": "下载视频文件",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Instagram 暂不支持",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Threads 暂不支持",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "模拟发布结果": {
+    "下载视频文件": {
+      "main": [
+        [
+          {
+            "node": "YouTube 初始化上传",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube 初始化上传": {
+      "main": [
+        [
+          {
+            "node": "合并上传数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并上传数据": {
+      "main": [
+        [
+          {
+            "node": "上传视频内容",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "上传视频内容": {
+      "main": [
+        [
+          {
+            "node": "YouTube 结果处理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube 结果处理": {
+      "main": [
+        [
+          {
+            "node": "检查缩略图",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查缩略图": {
+      "main": [
+        [
+          {
+            "node": "下载缩略图",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "检查播放列表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "下载缩略图": {
+      "main": [
+        [
+          {
+            "node": "设置缩略图",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "设置缩略图": {
+      "main": [
+        [
+          {
+            "node": "合并缩略图结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并缩略图结果": {
+      "main": [
+        [
+          {
+            "node": "检查播放列表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查播放列表": {
+      "main": [
+        [
+          {
+            "node": "展开播放列表",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "汇总 YouTube 结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "展开播放列表": {
+      "main": [
+        [
+          {
+            "node": "添加到播放列表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "添加到播放列表": {
+      "main": [
+        [
+          {
+            "node": "合并播放列表结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "合并播放列表结果": {
+      "main": [
+        [
+          {
+            "node": "汇总 YouTube 结果",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "汇总 YouTube 结果": {
+      "main": [
+        [
+          {
+            "node": "合并所有结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram 暂不支持": {
+      "main": [
+        [
+          {
+            "node": "合并所有结果",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Threads 暂不支持": {
+      "main": [
+        [
+          {
+            "node": "合并所有结果",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "合并所有结果": {
       "main": [
         [
           {
@@ -148,14 +747,14 @@
       "main": [
         [
           {
-            "node": "合并结果",
+            "node": "汇总回调结果",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "合并结果": {
+    "汇总回调结果": {
       "main": [
         [
           {
@@ -188,9 +787,12 @@
     },
     {
       "name": "content-distribution"
+    },
+    {
+      "name": "youtube-upload"
     }
   ],
   "triggerCount": 0,
-  "updatedAt": "2026-01-06T00:00:00.000Z",
-  "versionId": "1"
+  "updatedAt": "2026-01-07T00:00:00.000Z",
+  "versionId": "2"
 }

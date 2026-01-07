@@ -101,6 +101,7 @@ export const TriggerPublishReq = z.object({
 export const CallbackReq = z.object({
   taskId: z.string(),
   platform: PublishPlatformSchema,
+  accountId: z.string().optional(),  // 使用的社媒账号 ID
   success: z.boolean(),
   externalId: z.string().nullable().optional(),
   externalUrl: z.string().nullable().optional(),

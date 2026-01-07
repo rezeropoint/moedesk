@@ -12,6 +12,8 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/moedesk
       - N8N_WEBHOOK_URL=http://n8n:5678
       - SECURE_COOKIE=false
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -27,6 +29,7 @@ services:
       - N8N_PROTOCOL=http
       - N8N_SECURE_COOKIE=false
       - WEBHOOK_URL=http://localhost:5678
+      - NEXTJS_URL=http://app:3000
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
@@ -35,6 +38,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=postgres
     volumes:
       - n8n_data:/home/node/.n8n
+      - uploads:/uploads:ro
     depends_on:
       db:
         condition: service_healthy
@@ -61,3 +65,4 @@ services:
 volumes:
   postgres_data:
   n8n_data:
+  uploads:

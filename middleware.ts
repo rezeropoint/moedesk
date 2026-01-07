@@ -5,7 +5,7 @@ import { jwtVerify } from "jose"
 const AUTH_COOKIE_NAME = "moedesk-session"
 const JWT_SECRET = process.env.JWT_SECRET!
 
-const publicRoutes = ["/login", "/api/auth/login"]
+const publicRoutes = ["/login", "/api/auth/login", "/api/publish/callback"]
 const adminRoutes = ["/admin"]
 
 export async function middleware(request: NextRequest) {

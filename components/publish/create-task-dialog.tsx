@@ -28,11 +28,10 @@ import { cn } from "@/lib/utils"
 import type { PublishPlatform } from "@/types/publish"
 import { PLATFORM_CONFIGS } from "@/types/publish"
 import { AccountSelector } from "@/components/settings/accounts/account-selector"
+import { FileUpload } from "@/components/publish/file-upload"
 
 const formSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(100, "标题最多100字符"),
-  videoUrl: z.string().url("请输入有效的视频 URL").optional().or(z.literal("")),
-  coverUrl: z.string().url("请输入有效的封面 URL").optional().or(z.literal("")),
   platforms: z
     .array(z.enum(["INSTAGRAM", "THREADS", "YOUTUBE"]))
     .min(1, "请至少选择一个平台"),
@@ -55,13 +54,14 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // 账号选择状态：{ platform: accountIds[] }
   const [platformAccounts, setPlatformAccounts] = useState<Record<string, string[]>>({})
+  // 文件上传状态
+  const [videoUrl, setVideoUrl] = useState<{ public?: string; internal?: string }>({})
+  const [coverUrl, setCoverUrl] = useState<{ public?: string; internal?: string }>({})
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      videoUrl: "",
-      coverUrl: "",
       platforms: [],
     },
   })
@@ -81,8 +81,9 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: values.title,
-          videoUrl: values.videoUrl || undefined,
-          coverUrl: values.coverUrl || undefined,
+          // 使用内部 URL（供 n8n 访问）
+          videoUrl: videoUrl.internal || undefined,
+          coverUrl: coverUrl.internal || undefined,
           platforms: values.platforms,
           platformAccounts: Object.keys(platformAccounts).length > 0 ? platformAccounts : undefined,
         }),
@@ -98,6 +99,8 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       setOpen(false)
       form.reset()
       setPlatformAccounts({})
+      setVideoUrl({})
+      setCoverUrl({})
       onSuccess?.()
     } catch (error) {
       console.error("Create task failed:", error)
@@ -139,33 +142,29 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
               )}
             />
 
-            {/* 视频/封面 URL */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="videoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>视频 URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {/* 视频上传 */}
+            <div className="space-y-2">
+              <FormLabel>视频文件</FormLabel>
+              <FileUpload
+                type="video"
+                value={videoUrl.public}
+                onChange={(publicUrl, internalUrl) =>
+                  setVideoUrl({ public: publicUrl, internal: internalUrl })
+                }
+                disabled={isSubmitting}
               />
-              <FormField
-                control={form.control}
-                name="coverUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>封面 URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+
+            {/* 封面上传 */}
+            <div className="space-y-2">
+              <FormLabel>封面图片</FormLabel>
+              <FileUpload
+                type="image"
+                value={coverUrl.public}
+                onChange={(publicUrl, internalUrl) =>
+                  setCoverUrl({ public: publicUrl, internal: internalUrl })
+                }
+                disabled={isSubmitting}
               />
             </div>
 
