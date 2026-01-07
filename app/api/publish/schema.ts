@@ -57,16 +57,15 @@ export const PlatformContentInput = z.object({
   youtubeThumbnailUrl: z.string().url().optional().nullable().or(z.literal("")),
 })
 
-/** 创建任务请求 */
+/** 创建任务请求 - 仅基础信息，发布设置在详情面板配置 */
 export const CreateTaskReq = z.object({
   title: z.string().min(1, "标题不能为空").max(100, "标题最多100字符"),
   videoUrl: z.string().url("请输入有效的视频 URL").optional().or(z.literal("")),
   coverUrl: z.string().url("请输入有效的封面 URL").optional().or(z.literal("")),
   seriesId: z.string().optional().nullable(),
   platforms: z.array(PublishPlatformSchema).min(1, "请至少选择一个平台"),
-  mode: PublishModeSchema.default("SCHEDULED"),
-  scheduledAt: z.string().datetime().optional().nullable(),
-  platformContents: z.array(PlatformContentInput).optional(),
+  // 账号选择（按平台分组）: { "YOUTUBE": ["id1", "id2"], "INSTAGRAM": ["id3"] }
+  platformAccounts: z.record(z.string(), z.array(z.string())).optional(),
 })
 
 /** 更新任务请求 */

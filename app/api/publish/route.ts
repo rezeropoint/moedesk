@@ -113,6 +113,8 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/publish - 创建新任务
+ * 创建时只保存基础信息，状态始终为 DRAFT
+ * 发布设置（mode/scheduledAt）在详情面板配置
  */
 export async function POST(request: NextRequest) {
   const session = await getSession()
@@ -136,22 +138,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const {
-    title,
-    videoUrl,
-    coverUrl,
-    seriesId,
-    platforms,
-    mode,
-    scheduledAt,
-    platformContents,
-  } = parsed.data
-
-  // 确定初始状态
-  let initialStatus: "DRAFT" | "SCHEDULED" = "DRAFT"
-  if (mode === "SCHEDULED" && scheduledAt) {
-    initialStatus = "SCHEDULED"
-  }
+  const { title, videoUrl, coverUrl, seriesId, platforms, platformAccounts } = parsed.data
 
   try {
     const task = await db.publishTask.create({
@@ -161,65 +148,71 @@ export async function POST(request: NextRequest) {
         coverUrl: coverUrl || null,
         seriesId: seriesId || null,
         platforms,
-        mode,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        status: initialStatus,
+        mode: "SCHEDULED", // 默认定时发布模式
+        scheduledAt: null, // 创建时不设置排期时间
+        status: "DRAFT", // 始终为草稿状态
         createdBy: session.user.id,
+        // 为每个平台创建空文案记录
         platformContents: {
-          create: platforms.map((platform) => {
-            const content = platformContents?.find((c) => c.platform === platform)
-            return {
-              platform,
-              title: content?.title || null,
-              description: content?.description || null,
-              hashtags: content?.hashtags || [],
-              // YouTube 专属配置
-              youtubePrivacyStatus: content?.youtubePrivacyStatus || null,
-              youtubeCategoryId: content?.youtubeCategoryId || null,
-              youtubePlaylistIds: content?.youtubePlaylistIds || [],
-              youtubeThumbnailUrl: content?.youtubeThumbnailUrl || null,
-            }
-          }),
+          create: platforms.map((platform) => ({
+            platform,
+            title: null,
+            description: null,
+            hashtags: [],
+            youtubePrivacyStatus: platform === "YOUTUBE" ? "public" : null,
+            youtubeCategoryId: null,
+            youtubePlaylistIds: [],
+            youtubeThumbnailUrl: null,
+          })),
         },
+        // 关联账号
+        taskAccounts: platformAccounts
+          ? {
+              create: Object.entries(platformAccounts).flatMap(([, accountIds]) =>
+                accountIds.map((accountId) => ({ accountId }))
+              ),
+            }
+          : undefined,
       },
       include: {
         platformContents: true,
         series: { select: { titleChinese: true, titleOriginal: true } },
+        taskAccounts: { include: { account: true } },
       },
     })
 
     return Response.json(
-    {
-      data: {
-        id: task.id,
-        title: task.title,
-        videoUrl: task.videoUrl,
-        coverUrl: task.coverUrl,
-        seriesId: task.seriesId,
-        seriesTitle: task.series?.titleChinese || task.series?.titleOriginal || null,
-        platforms: task.platforms,
-        mode: task.mode,
-        scheduledAt: task.scheduledAt?.toISOString() || null,
-        status: task.status,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-        createdBy: task.createdBy,
-        platformContents: task.platformContents.map((pc) => ({
-          id: pc.id,
-          taskId: pc.taskId,
-          platform: pc.platform,
-          title: pc.title,
-          description: pc.description,
-          hashtags: pc.hashtags,
-          youtubePrivacyStatus: pc.youtubePrivacyStatus,
-          youtubeCategoryId: pc.youtubeCategoryId,
-          youtubePlaylistIds: pc.youtubePlaylistIds,
-          youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
-        })),
-        records: [],
+      {
+        data: {
+          id: task.id,
+          title: task.title,
+          videoUrl: task.videoUrl,
+          coverUrl: task.coverUrl,
+          seriesId: task.seriesId,
+          seriesTitle: task.series?.titleChinese || task.series?.titleOriginal || null,
+          platforms: task.platforms,
+          mode: task.mode,
+          scheduledAt: task.scheduledAt?.toISOString() || null,
+          status: task.status,
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+          createdBy: task.createdBy,
+          platformContents: task.platformContents.map((pc) => ({
+            id: pc.id,
+            taskId: pc.taskId,
+            platform: pc.platform,
+            title: pc.title,
+            description: pc.description,
+            hashtags: pc.hashtags,
+            youtubePrivacyStatus: pc.youtubePrivacyStatus,
+            youtubeCategoryId: pc.youtubeCategoryId,
+            youtubePlaylistIds: pc.youtubePlaylistIds,
+            youtubeThumbnailUrl: pc.youtubeThumbnailUrl,
+          })),
+          records: [],
+        },
       },
-    },
-    { status: 201 }
+      { status: 201 }
     )
   } catch (error) {
     console.error("创建发布任务失败:", error)

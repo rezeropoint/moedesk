@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -23,21 +23,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Plus, Calendar as CalendarIcon, Instagram, Youtube, AtSign } from "lucide-react"
+import { Plus, Instagram, Youtube, AtSign } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { zhCN } from "date-fns/locale"
-import type { PublishPlatform, PublishMode, YouTubePrivacyStatus } from "@/types/publish"
-import { PLATFORM_CONFIGS, MODE_CONFIGS, YOUTUBE_PRIVACY_CONFIGS } from "@/types/publish"
+import type { PublishPlatform } from "@/types/publish"
+import { PLATFORM_CONFIGS } from "@/types/publish"
 import { AccountSelector } from "@/components/settings/accounts/account-selector"
-import { Label } from "@/components/ui/label"
 
 const formSchema = z.object({
   title: z.string().min(1, "标题不能为空").max(100, "标题最多100字符"),
@@ -46,8 +36,6 @@ const formSchema = z.object({
   platforms: z
     .array(z.enum(["INSTAGRAM", "THREADS", "YOUTUBE"]))
     .min(1, "请至少选择一个平台"),
-  mode: z.enum(["IMMEDIATE", "SCHEDULED", "MANUAL"]),
-  scheduledAt: z.date().optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -67,8 +55,6 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   // 账号选择状态：{ platform: accountIds[] }
   const [platformAccounts, setPlatformAccounts] = useState<Record<string, string[]>>({})
-  // YouTube 隐私设置
-  const [youtubePrivacyStatus, setYoutubePrivacyStatus] = useState<YouTubePrivacyStatus>("public")
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -77,12 +63,9 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       videoUrl: "",
       coverUrl: "",
       platforms: [],
-      mode: "SCHEDULED",
-      scheduledAt: undefined,
     },
   })
 
-  const selectedMode = useWatch({ control: form.control, name: "mode" })
   const selectedPlatforms = useWatch({ control: form.control, name: "platforms" })
 
   // 更新单个平台的账号选择
@@ -93,31 +76,15 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
   async function handleSubmit(values: FormValues) {
     setIsSubmitting(true)
     try {
-      // 构建账号关联数据
-      const accountsData = values.platforms
-        .filter(p => platformAccounts[p]?.length > 0)
-        .map(platform => ({
-          platform,
-          accountIds: platformAccounts[platform],
-        }))
-
-      // 构建平台特定配置
-      const platformContents = values.platforms.map(platform => ({
-        platform,
-        // YouTube 专属配置
-        ...(platform === "YOUTUBE" && {
-          youtubePrivacyStatus,
-        }),
-      }))
-
       const response = await fetch("/api/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...values,
-          scheduledAt: values.scheduledAt?.toISOString() || null,
-          platformAccounts: accountsData.length > 0 ? accountsData : undefined,
-          platformContents,
+          title: values.title,
+          videoUrl: values.videoUrl || undefined,
+          coverUrl: values.coverUrl || undefined,
+          platforms: values.platforms,
+          platformAccounts: Object.keys(platformAccounts).length > 0 ? platformAccounts : undefined,
         }),
       })
 
@@ -131,7 +98,6 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       setOpen(false)
       form.reset()
       setPlatformAccounts({})
-      setYoutubePrivacyStatus("public")
       onSuccess?.()
     } catch (error) {
       console.error("Create task failed:", error)
@@ -151,6 +117,9 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>新建发布任务</DialogTitle>
+          <DialogDescription>
+            创建后在详情面板配置文案和发布设置
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -265,120 +234,6 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
               </div>
             )}
 
-            {/* YouTube 隐私设置（选择 YouTube 平台后显示） */}
-            {selectedPlatforms.includes("YOUTUBE") && (
-              <div className="space-y-3">
-                <Label>YouTube 隐私设置</Label>
-                <RadioGroup
-                  value={youtubePrivacyStatus}
-                  onValueChange={(v) => setYoutubePrivacyStatus(v as YouTubePrivacyStatus)}
-                  className="flex flex-wrap gap-4"
-                >
-                  {(Object.keys(YOUTUBE_PRIVACY_CONFIGS) as YouTubePrivacyStatus[]).map((status) => {
-                    const config = YOUTUBE_PRIVACY_CONFIGS[status]
-                    return (
-                      <div key={status} className="flex items-center space-x-2">
-                        <RadioGroupItem value={status} id={`privacy-${status}`} />
-                        <Label
-                          htmlFor={`privacy-${status}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {config.label}
-                        </Label>
-                      </div>
-                    )
-                  })}
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  {YOUTUBE_PRIVACY_CONFIGS[youtubePrivacyStatus].description}
-                </p>
-              </div>
-            )}
-
-            {/* 发布模式 */}
-            <FormField
-              control={form.control}
-              name="mode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>发布模式</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="space-y-3 mt-2"
-                    >
-                      {(Object.keys(MODE_CONFIGS) as PublishMode[]).map((mode) => {
-                        const config = MODE_CONFIGS[mode]
-                        return (
-                          <div key={mode} className="flex items-start space-x-3">
-                            <RadioGroupItem value={mode} id={`mode-${mode}`} />
-                            <div className="space-y-0.5">
-                              <label
-                                htmlFor={`mode-${mode}`}
-                                className="text-sm font-medium cursor-pointer"
-                              >
-                                {config.label}
-                              </label>
-                              <p className="text-xs text-muted-foreground">
-                                {config.description}
-                              </p>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </RadioGroup>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            {/* 排期时间（仅 SCHEDULED 模式显示） */}
-            {selectedMode === "SCHEDULED" && (
-              <FormField
-                control={form.control}
-                name="scheduledAt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>排期时间</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value
-                              ? format(field.value, "yyyy-MM-dd HH:mm", {
-                                  locale: zhCN,
-                                })
-                              : "选择发布时间"}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
-                          locale={zhCN}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>
-                      到达设定时间后自动触发发布
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
             {/* 提交按钮 */}
             <div className="flex justify-end gap-3 pt-4">
               <Button
@@ -389,7 +244,7 @@ export function CreateTaskDialog({ onSuccess }: CreateTaskDialogProps) {
                 取消
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "创建中..." : "创建任务"}
+                {isSubmitting ? "创建中..." : "创建草稿"}
               </Button>
             </div>
           </form>

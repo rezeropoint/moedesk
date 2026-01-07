@@ -30,22 +30,32 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
   Instagram,
   Youtube,
   AtSign,
-  Calendar,
   Play,
   ExternalLink,
   Send,
   Save,
   Trash2,
   Loader2,
+  Clock,
+  CalendarClock,
+  X,
 } from "lucide-react"
+import { format } from "date-fns"
+import { zhCN } from "date-fns/locale"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import type {
   PublishTask,
   PublishPlatform,
-  PublishMode,
   YouTubePrivacyStatus,
   YouTubeCategory,
   YouTubePlaylist,
@@ -53,7 +63,6 @@ import type {
 import {
   PLATFORM_CONFIGS,
   STATUS_CONFIGS,
-  MODE_CONFIGS,
   YOUTUBE_PRIVACY_CONFIGS,
 } from "@/types/publish"
 
@@ -100,7 +109,11 @@ export function PublishTaskDetail({
   const [isSaving, setIsSaving] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isTogglingSchedule, setIsTogglingSchedule] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("")
+
+  // 排期时间状态
+  const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
 
   // 平台文案表单状态
   const [platformForms, setPlatformForms] = useState<
@@ -134,6 +147,8 @@ export function PublishTaskDetail({
       }
       setPlatformForms(forms)
       setActiveTab(task.platforms[0] || "")
+      // 初始化排期时间
+      setScheduledAt(task.scheduledAt ? new Date(task.scheduledAt) : undefined)
     }
   }, [task])
 
@@ -209,7 +224,7 @@ export function PublishTaskDetail({
         const form = platformForms[platform]
         if (!form) continue
 
-        await fetch(`/api/publish/${task.id}/platform-content`, {
+        const response = await fetch(`/api/publish/${task.id}/platform-content`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -229,10 +244,19 @@ export function PublishTaskDetail({
             }),
           }),
         })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || "保存失败")
+        }
       }
+      toast.success("文案保存成功")
       onUpdate?.()
     } catch (error) {
       console.error("Save failed:", error)
+      toast.error("保存失败", {
+        description: error instanceof Error ? error.message : "未知错误",
+      })
     } finally {
       setIsSaving(false)
     }
@@ -253,10 +277,19 @@ export function PublishTaskDetail({
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "发布失败")
+        let errorMsg = "发布失败"
+        try {
+          const error = await response.json()
+          errorMsg = error.details || error.error || errorMsg
+        } catch {
+          // 响应不是 JSON，可能是网络错误或服务不可用
+          errorMsg = `服务响应异常 (${response.status})`
+        }
+        toast.error("发布失败", { description: errorMsg })
+        throw new Error(errorMsg)
       }
 
+      toast.success("发布任务已触发")
       onUpdate?.()
     } catch (error) {
       console.error("Publish failed:", error)
@@ -283,6 +316,74 @@ export function PublishTaskDetail({
       console.error("Delete failed:", error)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  // 启用定时发布（DRAFT → SCHEDULED）
+  const handleEnableSchedule = async () => {
+    if (!scheduledAt) return
+
+    setIsTogglingSchedule(true)
+    try {
+      // 先保存文案
+      await handleSave()
+
+      // 更新任务状态为 SCHEDULED
+      const response = await fetch(`/api/publish/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "SCHEDULED",
+          scheduledAt: scheduledAt.toISOString(),
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "启用定时失败")
+      }
+
+      toast.success("定时发布已启用", {
+        description: `将于 ${format(scheduledAt, "yyyy-MM-dd HH:mm", { locale: zhCN })} 自动发布`,
+      })
+      onUpdate?.()
+    } catch (error) {
+      console.error("Enable schedule failed:", error)
+      toast.error("启用定时失败", {
+        description: error instanceof Error ? error.message : "未知错误",
+      })
+    } finally {
+      setIsTogglingSchedule(false)
+    }
+  }
+
+  // 取消定时发布（SCHEDULED → DRAFT）
+  const handleCancelSchedule = async () => {
+    setIsTogglingSchedule(true)
+    try {
+      const response = await fetch(`/api/publish/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledAt: null,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "取消定时失败")
+      }
+
+      setScheduledAt(undefined)
+      toast.success("定时发布已取消")
+      onUpdate?.()
+    } catch (error) {
+      console.error("Cancel schedule failed:", error)
+      toast.error("取消定时失败", {
+        description: error instanceof Error ? error.message : "未知错误",
+      })
+    } finally {
+      setIsTogglingSchedule(false)
     }
   }
 
@@ -639,64 +740,92 @@ export function PublishTaskDetail({
         </CardContent>
       </Card>
 
-      {/* 发布设置（只读展示） */}
+      {/* 发布设置 */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium">发布设置</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {(Object.keys(MODE_CONFIGS) as PublishMode[]).map((mode) => {
-              const config = MODE_CONFIGS[mode]
-              const isSelected = task.mode === mode
-              return (
-                <div
-                  key={mode}
-                  className={cn(
-                    "flex items-start space-x-3 rounded-lg p-2",
-                    isSelected && "bg-muted"
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "mt-0.5 h-4 w-4 rounded-full border-2",
-                      isSelected
-                        ? "border-primary bg-primary"
-                        : "border-muted-foreground"
-                    )}
-                  />
-                  <div className="space-y-1">
-                    <p
-                      className={cn(
-                        "text-sm font-medium",
-                        !isSelected && "text-muted-foreground"
-                      )}
-                    >
-                      {config.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {config.description}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
+        <CardContent className="space-y-4">
+          {/* 当前状态显示 */}
+          <div className="flex items-center gap-2">
+            <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+            {task.status === "SCHEDULED" && task.scheduledAt && (
+              <span className="text-sm text-muted-foreground">
+                将于 {formatDateTime(task.scheduledAt)} 自动发布
+              </span>
+            )}
           </div>
 
-          {/* 排期时间显示 */}
-          {task.mode === "SCHEDULED" && task.scheduledAt && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-muted p-3">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">
-                排期时间: {formatDateTime(task.scheduledAt)}
-              </span>
+          {/* 排期时间设置（仅 DRAFT 状态可编辑） */}
+          {isEditable && (
+            <div className="space-y-3">
+              <Label>排期时间</Label>
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal",
+                        !scheduledAt && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarClock className="mr-2 h-4 w-4" />
+                      {scheduledAt
+                        ? format(scheduledAt, "yyyy-MM-dd HH:mm", { locale: zhCN })
+                        : "选择发布时间"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={scheduledAt}
+                      onSelect={setScheduledAt}
+                      disabled={(date) => date < new Date()}
+                      locale={zhCN}
+                    />
+                    {/* 时间选择器 */}
+                    <div className="border-t p-3">
+                      <Label className="text-xs">选择时间</Label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          type="time"
+                          className="w-full"
+                          value={scheduledAt ? format(scheduledAt, "HH:mm") : ""}
+                          onChange={(e) => {
+                            if (scheduledAt && e.target.value) {
+                              const [hours, minutes] = e.target.value.split(":").map(Number)
+                              const newDate = new Date(scheduledAt)
+                              newDate.setHours(hours, minutes)
+                              setScheduledAt(newDate)
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {scheduledAt && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setScheduledAt(undefined)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                设置时间后点击「启用定时」，到期后将自动触发发布
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* 操作按钮 */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        {/* 删除按钮 */}
         {canDelete && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -733,10 +862,10 @@ export function PublishTaskDetail({
           </AlertDialog>
         )}
 
+        {/* 保存文案按钮 */}
         {isEditable && (
           <Button
             variant="outline"
-            className="flex-1"
             onClick={handleSave}
             disabled={isSaving}
           >
@@ -749,6 +878,38 @@ export function PublishTaskDetail({
           </Button>
         )}
 
+        {/* 定时相关按钮 */}
+        {task.status === "DRAFT" && scheduledAt && (
+          <Button
+            variant="outline"
+            onClick={handleEnableSchedule}
+            disabled={isTogglingSchedule || isSaving}
+          >
+            {isTogglingSchedule ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Clock className="h-4 w-4 mr-2" />
+            )}
+            启用定时
+          </Button>
+        )}
+
+        {task.status === "SCHEDULED" && (
+          <Button
+            variant="outline"
+            onClick={handleCancelSchedule}
+            disabled={isTogglingSchedule}
+          >
+            {isTogglingSchedule ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <X className="h-4 w-4 mr-2" />
+            )}
+            取消定时
+          </Button>
+        )}
+
+        {/* 立即发布按钮 */}
         {canPublish && (
           <Button
             className="flex-1 gap-2"
