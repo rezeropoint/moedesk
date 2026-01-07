@@ -319,7 +319,7 @@ export function PublishTaskDetail({
     }
   }
 
-  // 启用定时发布（DRAFT → SCHEDULED）
+  // 启用定时发布（DRAFT → SCHEDULED，并立即上传到 YouTube）
   const handleEnableSchedule = async () => {
     if (!scheduledAt) return
 
@@ -329,7 +329,7 @@ export function PublishTaskDetail({
       await handleSave()
 
       // 更新任务状态为 SCHEDULED
-      const response = await fetch(`/api/publish/${task.id}`, {
+      const updateResponse = await fetch(`/api/publish/${task.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -338,13 +338,24 @@ export function PublishTaskDetail({
         }),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json()
         throw new Error(error.error || "启用定时失败")
       }
 
+      // 触发上传到 YouTube（视频会以私密状态上传，YouTube 自动在指定时间公开）
+      const triggerResponse = await fetch(`/api/publish/${task.id}/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (!triggerResponse.ok) {
+        const error = await triggerResponse.json()
+        throw new Error(error.error || "触发上传失败")
+      }
+
       toast.success("定时发布已启用", {
-        description: `将于 ${format(scheduledAt, "yyyy-MM-dd HH:mm", { locale: zhCN })} 自动发布`,
+        description: `视频正在上传，将于 ${format(scheduledAt, "yyyy-MM-dd HH:mm", { locale: zhCN })} 自动公开`,
       })
       onUpdate?.()
     } catch (error) {
@@ -357,16 +368,14 @@ export function PublishTaskDetail({
     }
   }
 
-  // 取消定时发布（SCHEDULED → DRAFT）
+  // 取消定时发布（SCHEDULED → DRAFT，并取消 YouTube 定时）
   const handleCancelSchedule = async () => {
     setIsTogglingSchedule(true)
     try {
-      const response = await fetch(`/api/publish/${task.id}`, {
-        method: "PATCH",
+      // 调用取消定时 API（会同时取消 YouTube 的定时发布）
+      const response = await fetch(`/api/publish/${task.id}/cancel-schedule`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scheduledAt: null,
-        }),
       })
 
       if (!response.ok) {
@@ -375,7 +384,9 @@ export function PublishTaskDetail({
       }
 
       setScheduledAt(undefined)
-      toast.success("定时发布已取消")
+      toast.success("定时发布已取消", {
+        description: "视频保持私有状态，可重新设置定时或立即发布",
+      })
       onUpdate?.()
     } catch (error) {
       console.error("Cancel schedule failed:", error)

@@ -376,6 +376,7 @@ model PublishPlatformContent {
   youtubeCategoryId      String?   @map("youtube_category_id")      // 视频分类 ID
   youtubePlaylistIds     String[]  @default([]) @map("youtube_playlist_ids")  // 播放列表 ID 列表
   youtubeThumbnailUrl    String?   @map("youtube_thumbnail_url")    // 缩略图 URL
+  youtubeVideoId         String?   @map("youtube_video_id")         // 上传后的视频 ID（用于取消定时）
 
   @@unique([taskId, platform])
   @@map("publish_platform_contents")

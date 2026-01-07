@@ -378,3 +378,116 @@ export async function getYouTubePlaylists(
     return []
   }
 }
+
+// ============================================================================
+// 取消定时发布
+// ============================================================================
+
+/**
+ * 取消 YouTube 视频的定时发布
+ * 将视频改为私有状态，清除 publishAt
+ * @param accountId 社媒账号 ID
+ * @param videoId YouTube 视频 ID
+ * @returns 操作是否成功
+ */
+export async function cancelYouTubeSchedule(
+  accountId: string,
+  videoId: string
+): Promise<{ success: boolean; error?: string }> {
+  const accessToken = await getValidAccessToken(accountId)
+  if (!accessToken) {
+    return { success: false, error: "无法获取有效的访问令牌" }
+  }
+
+  try {
+    // 调用 YouTube API 更新视频状态
+    // 将 privacyStatus 设为 private，不设置 publishAt（相当于取消定时）
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/videos?part=status`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: videoId,
+          status: {
+            privacyStatus: "private",
+            // 不设置 publishAt，相当于取消定时发布
+          },
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("[YouTube] 取消定时发布失败:", errorData)
+      return {
+        success: false,
+        error: errorData.error?.message || "YouTube API 调用失败",
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[YouTube] 取消定时发布异常:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "未知错误",
+    }
+  }
+}
+
+/**
+ * 立即公开 YouTube 视频
+ * 用于取消定时后改为立即发布
+ * @param accountId 社媒账号 ID
+ * @param videoId YouTube 视频 ID
+ * @returns 操作是否成功
+ */
+export async function publishYouTubeVideoNow(
+  accountId: string,
+  videoId: string
+): Promise<{ success: boolean; error?: string }> {
+  const accessToken = await getValidAccessToken(accountId)
+  if (!accessToken) {
+    return { success: false, error: "无法获取有效的访问令牌" }
+  }
+
+  try {
+    const response = await fetch(
+      `${YOUTUBE_API_BASE}/videos?part=status`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: videoId,
+          status: {
+            privacyStatus: "public",
+          },
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error("[YouTube] 立即发布失败:", errorData)
+      return {
+        success: false,
+        error: errorData.error?.message || "YouTube API 调用失败",
+      }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("[YouTube] 立即发布异常:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "未知错误",
+    }
+  }
+}

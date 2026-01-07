@@ -74,6 +74,14 @@ export async function POST(request: NextRequest) {
     },
   })
 
+  // 保存 YouTube 视频 ID（用于取消定时发布）
+  if (platform === "YOUTUBE" && success && externalId) {
+    await db.publishPlatformContent.updateMany({
+      where: { taskId, platform },
+      data: { youtubeVideoId: externalId },
+    })
+  }
+
   // 重新获取任务和所有记录，判断最终状态
   const updatedTask = await db.publishTask.findUnique({
     where: { id: taskId },
@@ -98,10 +106,16 @@ export async function POST(request: NextRequest) {
     (p) => latestByPlatform.get(p) || "PUBLISHING"
   )
 
+  // 检查是否是定时发布（视频已上传但尚未到公开时间）
+  const isScheduledPublish = updatedTask.mode === "SCHEDULED" &&
+    updatedTask.scheduledAt &&
+    new Date(updatedTask.scheduledAt) > new Date()
+
   let finalStatus: PublishStatus
   if (results.every((s) => s === "PUBLISHED")) {
     // 全部成功
-    finalStatus = "PUBLISHED"
+    // 如果是定时发布且还没到时间，保持 SCHEDULED 状态
+    finalStatus = isScheduledPublish ? "SCHEDULED" : "PUBLISHED"
   } else if (results.every((s) => s === "FAILED")) {
     // 全部失败
     finalStatus = "FAILED"

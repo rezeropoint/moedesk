@@ -168,6 +168,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           youtubeCategoryId: c.youtubeCategoryId,
           youtubePlaylistIds: c.youtubePlaylistIds,
           youtubeThumbnailUrl: c.youtubeThumbnailUrl,
+          // 定时发布时间（仅 YouTube 使用）
+          publishAt: task.mode === "SCHEDULED" && task.scheduledAt
+            ? task.scheduledAt.toISOString()
+            : null,
         })),
       // 账号凭证
       accountCredentials,
